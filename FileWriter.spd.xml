@@ -21,16 +21,16 @@
     <programminglanguage name="C++"/>
     <humanlanguage name="EN"/>
     <os name="Linux"/>
-    <dependency type="runtime_requirements">
-      <softpkgref>
-        <localfile name="/deps/RedhawkDevUtils_v1/RedhawkDevUtils_v1.spd.xml"/>
-      </softpkgref>
-    </dependency>
     <processor name="x86"/>
     <processor name="x86_64"/>
     <dependency type="matching">
       <softpkgref>
         <localfile name="/deps/blueFileLib_v1/blueFileLib_v1.spd.xml"/>
+      </softpkgref>
+    </dependency>
+    <dependency type="matching">
+      <softpkgref>
+        <localfile name="/deps/RedhawkDevUtils_v1/RedhawkDevUtils_v1.spd.xml"/>
       </softpkgref>
     </dependency>
   </implementation>

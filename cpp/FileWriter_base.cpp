@@ -1,23 +1,3 @@
-/*
- * This file is protected by Copyright. Please refer to the COPYRIGHT file
- * distributed with this source distribution.
- *
- * This file is part of FilterDecimate.
- *
- * FilterDecimate is free software: you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation, either version 3 of the License, or (at your
- * option) any later version.
- *
- * FilterDecimate is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see http://www.gnu.org/licenses/.
- */
-
 #include "FileWriter_base.h"
 
 /*******************************************************************************************
@@ -114,6 +94,15 @@ void FileWriter_base::releaseObject() throw (CORBA::SystemException, CF::LifeCyc
 
 void FileWriter_base::loadProperties()
 {
+    addProperty(debug_output,
+                false,
+                "debug_output",
+                "debug_output",
+                "readwrite",
+                "",
+                "external",
+                "configure");
+
     addProperty(destination_uri,
                 "sca:///data/%STREAMID%.%TIMESTAMP%.%MODE%.%SR%.%DT%",
                 "destination_uri",
@@ -135,6 +124,15 @@ void FileWriter_base::loadProperties()
                 "RAW",
                 "file_format",
                 "file_format",
+                "readwrite",
+                "",
+                "external",
+                "configure");
+
+    addProperty(swap_bytes,
+                false,
+                "swap_bytes",
+                "swap_bytes",
                 "readwrite",
                 "",
                 "external",

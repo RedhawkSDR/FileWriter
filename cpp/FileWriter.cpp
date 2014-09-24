@@ -106,7 +106,6 @@ void FileWriter_i::destination_uri_suffixChanged(const std::string *oldValue, co
 void FileWriter_i::change_uri() {
     std::string destination_uri_full = destination_uri + destination_uri_suffix;
     std::string normFile = filesystem->normalize_uri_path(destination_uri_full);
-    //std::cout << normFile << std::endl;
     std::string prefix, dir, base;
     ABSTRACTED_FILE_IO::FILESYSTEM_TYPE type;
     filesystem->uri_path_extraction(normFile, dir, base, type);
@@ -356,21 +355,47 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
     typename IN_PORT_TYPE::dataTransfer *packet = dataIn->getPacket(0);
     if (packet == NULL)
         return false;
-    if (packet->inputQueueFlushed)
+    if (packet->inputQueueFlushed){
         LOG_WARN(FileWriter_i, "WARNING: FILEWRITER INPUT QUEUE HAS BEEN FLUSHED!\n");
-
-
-    std::string stream_id = packet->streamID;
-    try {
-        std::string tmp = getKeywordValueByID<std::string>(& packet->SRI, "STREAM_GROUP");
-        stream_id = tmp;
-    } catch (...) {
-    };
+    }
 
     //Sets basic data type. IE- float for float port, short for short port
     typedef typeof (packet->dataBuffer[0]) PACKET_ELEMENT_TYPE;
     size_t packet_pos = 0;
     std::string existing_file = advanced_properties.existing_file;
+
+    // STREAM ID
+    std::string stream_id = packet->streamID;
+    updateIfFound_KeywordValueByID<std::string>(& packet->SRI, "STREAM_GROUP",stream_id);
+
+    // Initial Search for file struct
+    std::string destination_filename = "";
+    std::map<std::string, std::string>::iterator curFileIter = stream_to_file_mapping.find(stream_id);
+    std::map<std::string, file_struct>::iterator curFileDescIter = file_to_struct_mapping.end();
+    if (curFileIter != stream_to_file_mapping.end()) {
+        destination_filename = curFileIter->second;
+        curFileDescIter = file_to_struct_mapping.find(destination_filename);
+    }
+
+    // If recording is disabled, make sure files are closed
+    if (!recording_enabled){
+         if (!destination_filename.empty()) {
+             LOG_DEBUG(FileWriter_i, "CLOSING FILE: " << destination_filename << " DUE TO RECORDING BEING DISABLED!");
+             close_file(destination_filename, packet->T, stream_id);
+             stream_to_file_mapping.erase(stream_id);
+         }
+         delete packet;
+         return true;
+    }
+
+    // Do not open a file handle that will be of size 0
+    if (packet->dataBuffer.empty() && packet->EOS && destination_filename.empty()){
+        delete packet;
+        return true;
+    }
+
+
+    // RECORDING TIMER
     while (timer_set_iter != timer_set.end()) {
         timer_timestamp = getSystemTimestamp();
         if (timer_set_iter->tcmode == 1)
@@ -381,165 +406,146 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
         timer_set_iter++;
     }
 
+    // RESET ON RETUNE
+    if (advanced_properties.reset_on_retune && curFileDescIter != file_to_struct_mapping.end()) {
+        bool close = false;
+        close |= (curFileDescIter->second.lastSRI.xdelta != packet->SRI.xdelta);
+        close |= (curFileDescIter->second.lastSRI.mode != packet->SRI.mode);
 
-    std::map<std::string, std::string>::iterator curFileIter = stream_to_file_mapping.find(stream_id);
-    if (curFileIter != stream_to_file_mapping.end() && advanced_properties.reset_on_retune){
-    	std::string filename = curFileIter->second;
-    	std::map<std::string, file_struct>::iterator cur_file_desc_iter = file_to_struct_mapping.find(filename);
-    	if(cur_file_desc_iter != file_to_struct_mapping.end()){
-    		bool close = false;
-    		close |=  (cur_file_desc_iter->second.lastSRI.xdelta !=  packet->SRI.xdelta);
-    		close |=  (cur_file_desc_iter->second.lastSRI.mode !=  packet->SRI.mode);
-    		double old_cf = 0;
-    		double new_cf = 0;
-    		try{
-    			old_cf = getKeywordValueByID<double>(& cur_file_desc_iter->second.lastSRI, "COL_RF");
-    		}catch(...){};
-    		try{
-    			new_cf = getKeywordValueByID<double>(& packet->SRI, "COL_RF");
-    		}catch(...){};
-    		close |=  (old_cf != new_cf);
+        double old_cf = 0;
+        double new_cf = 0;
+        updateIfFound_KeywordValueByID<double>(& curFileDescIter->second.lastSRI, "COL_RF", old_cf);
+        updateIfFound_KeywordValueByID<double>(& packet->SRI, "COL_RF", new_cf);
+        close |= (old_cf != new_cf);
 
-    		old_cf = 0;
-    		new_cf = 0;
-			try {
-				old_cf = getKeywordValueByID<double> (&cur_file_desc_iter->second.lastSRI, "CHAN_RF");
-			} catch (...) {
-			};
-			try {
-				new_cf = getKeywordValueByID<double> (&packet->SRI, "CHAN_RF");
-			} catch (...) {
-			};
-			close |= (old_cf != new_cf);
+        old_cf = 0;
+        new_cf = 0;
+        updateIfFound_KeywordValueByID<double>(& curFileDescIter->second.lastSRI, "CHAN_RF", old_cf);
+        updateIfFound_KeywordValueByID<double>(& packet->SRI, "CHAN_RF", new_cf);
+        close |= (old_cf != new_cf);
 
-			if(close){
-				close_file(filename, packet->T, stream_id);
-				stream_to_file_mapping.erase(stream_id);
-			}
-    	}
+        if (close) {
+            close_file(destination_filename, packet->T, stream_id);
+            stream_to_file_mapping.erase(stream_id);
+        }
     }
-    std::map<std::string, file_struct>::iterator curFileDescIter = file_to_struct_mapping.end();
     
-    if (advanced_properties.swap_bytes) {
+    // BYTE SWAP
+    if (swap_bytes) {
         if (dt.find("16") != std::string::npos) {
-            //std::cout << "FileWriter_i::DEBUG - swap_bytes - swapping 16\n";
+            LOG_DEBUG(FileWriter_i, "SWAP_BYTES - swapping 16");
             std::vector<uint16_t> *svp = (std::vector<uint16_t> *) & packet->dataBuffer;
             std::transform(svp->begin(), svp->end(), svp->begin(), Byte_Swap16<uint16_t>);
         } else if (dt.find("32") != std::string::npos) {
-            //std::cout << "FileWriter_i::DEBUG - swap_bytes - swapping 32\n";
+            LOG_DEBUG(FileWriter_i, "SWAP_BYTES - swapping 32");
             std::vector<uint32_t> *svp = (std::vector<uint32_t> *) & packet->dataBuffer;
             std::transform(svp->begin(), svp->end(), svp->begin(), Byte_Swap32<uint32_t>);
         } else if (dt.find("64") != std::string::npos) {
-            //std::cout << "FileWriter_i::DEBUG - swap_bytes - swapping 64\n";
+        	LOG_DEBUG(FileWriter_i, "SWAP_BYTES - swapping 64");
             std::vector<uint64_t> *svp = (std::vector<uint64_t> *) & packet->dataBuffer;
             std::transform(svp->begin(), svp->end(), svp->begin(), Byte_Swap64<uint64_t>);
         }
     }
     do {
         try {
-            // Ensure that recording is enabled
-            if (!recording_enabled)
-                throw std::logic_error("Recording Disabled. Dropping Packet!");
-            // Ensure File is Open
-            bool new_metadata_file = false;
-            if (curFileIter == stream_to_file_mapping.end()) {
 
+            // Is File New
+            if (destination_filename.empty()) {
                 std::string basename = stream_to_basename(stream_id, packet->SRI, packet->T, file_format, dt);
-                std::string filename = prop_dirname + "/" + basename;
-                
+                destination_filename = prop_dirname + basename;
+                bool append = false;
                 // Unless the file is appending, do something if the file already exists
-                if (filesystem->exists(filename)) {
+                if (filesystem->exists(destination_filename)) {
                     if (existing_file == "DROP")
                         throw std::logic_error("File Exists. Dropping Packet!");
                     else if (existing_file == "TRUNCATE") {
-                        curFileDescIter = file_to_struct_mapping.find(filename);
-                        if (curFileDescIter != file_to_struct_mapping.end())
+                        curFileDescIter = file_to_struct_mapping.find(destination_filename);
+                        if (curFileDescIter != file_to_struct_mapping.end()) {
                             throw std::logic_error("Cannot truncate a file currently being written to by this File Writer. Dropping Packet!");
-                        filesystem->delete_file(filename);
+                        }
                     } else if (existing_file == "RENAME") {
-                        char countBuf[5];
                         int counter = 1;
-                        std::string tmpFN = filename;
+                        std::string tmpFN = destination_filename;
                         do {
-                            sprintf(countBuf, "%d", counter);
-                            tmpFN = filename + "-" + std::string(countBuf);
+                            tmpFN = destination_filename + "-" + boost::lexical_cast<std::string>(counter);
                             counter++;
                         } while (filesystem->exists(tmpFN) && counter <= 1024);
-                        filename = tmpFN;
-                        if (filesystem->exists(filename))
+                        destination_filename = tmpFN;
+                        if (filesystem->exists(destination_filename))
                             throw std::logic_error("Cannot rename file to an available name. Dropping Reset of Packet!");
                     } else if (existing_file == "APPEND") {
+                        append = true;
                     }
                 }
-                // Attempt to open the file
-                if (filesystem->open_file(filename, true, true)) {
-                    LOG_DEBUG(FileWriter_i, "DEBUG OPENED STREAM: " << packet->streamID << " (" << stream_id << ") " << " OR FILE: " << filename);
 
-                    file_io_message_struct file_event;
-                    file_event.file_operation = "OPEN";
-                    file_event.filename = filesystem->uri_to_file(filename);
-                    file_event.stream_id = stream_id;
+                // Correlates stream ID to file
+                curFileIter = stream_to_file_mapping.insert(std::make_pair(stream_id, destination_filename)).first;
+                curFileDescIter = file_to_struct_mapping.find(destination_filename);
+                if (curFileDescIter == file_to_struct_mapping.end()) {
+                    double curTime = packet->T.toff + packet->T.twsec + packet->T.tfsec;
+                    file_struct fs(destination_filename, current_writer_type, curTime, advanced_properties.enable_metadata_file, advanced_properties.use_hidden_files, advanced_properties.open_file_extension, advanced_properties.open_metadata_file_extension, stream_id);
+                    curFileDescIter = file_to_struct_mapping.insert(std::make_pair(destination_filename, fs)).first;
+                    curFileDescIter->second.file_size_internal = filesystem->file_size(destination_filename);
+
+                    bool open_success = filesystem->open_file(curFileDescIter->second.in_process_uri_filename, true, append);
+                    if (curFileDescIter->second.metdata_file_enabled())
+                        open_success |= filesystem->open_file(curFileDescIter->second.in_process_uri_metadata_filename, true, append);
+                    if (!open_success) {
+                        close_file(destination_filename, packet->T, stream_id);
+                        stream_to_file_mapping.erase(stream_id);
+                        LOG_ERROR(FileWriter_i, "ERROR OPENING FILE: " << curFileDescIter->second.in_process_uri_filename);
+                        throw std::logic_error("ERROR OPENING FILE: " + curFileDescIter->second.in_process_uri_filename);
+                    }
+
+                    if (debug_output)
+                        std::cout << "DEBUG (" << __PRETTY_FUNCTION__ << "): OPENED STREAM: " << packet->streamID
+                            << " (" << stream_id << ") " << " OR FILE (TMP): " << fs.in_process_uri_filename
+                            << " OR FILE (TMP): " << fs.uri_filename << std::endl;
+                    LOG_INFO(FileWriter_i, " OPENED STREAM: " << packet->streamID << " (" << stream_id << ") " << " OR FILE (TMP): " << fs.in_process_uri_filename << " OR FILE (TMP): " << fs.uri_filename);
+
+                    file_io_message_struct file_event = create_file_io_message("OPEN", stream_id, filesystem->uri_to_file(fs.in_process_uri_filename));
                     MessageEvent_out->sendMessage(file_event);
 
-                    // Correlates stream ID to file
-                    curFileIter = stream_to_file_mapping.insert(std::make_pair(stream_id, filename)).first;
-
-                    // Keeps track of file information
-                    curFileDescIter = file_to_struct_mapping.find(filename);
-                    if (curFileDescIter == file_to_struct_mapping.end()) {
-                        double curTime = packet->T.toff + packet->T.twsec + packet->T.tfsec;
-                        curFileDescIter = file_to_struct_mapping.insert(std::make_pair(filename, file_struct(filename, current_writer_type, curTime))).first;
-                        curFileDescIter->second.stream_id = stream_id;
-                        curFileDescIter->second.file_size_internal = filesystem->file_size(filename);
-                    } else
-                        curFileDescIter->second.num_writers++;
                     curFileDescIter->second.lastSRI = packet->SRI;
 
-                    size_t pos = filesystem->file_tell(filename);
+                    // Initialize Metadata File
+                    if (curFileDescIter->second.metdata_file_enabled()){
+                        std::string openXML = "<FileWriter_metadata>";
+                        filesystem->write(curFileDescIter->second.in_process_uri_metadata_filename, &openXML, advanced_properties.force_flush);
+                    }
+
+                    // BLUEFILE
+                    size_t pos = filesystem->file_tell(curFileDescIter->second.in_process_uri_filename);
                     if (curFileDescIter->second.file_type == BLUEFILE) {
                         curFileDescIter->second.lastSRI = packet->SRI;
                         curFileDescIter->second.midas_type = midas_type<PACKET_ELEMENT_TYPE > ((curFileDescIter->second.lastSRI.mode == 0));
-                        //std::cout << " BLUEFILE WITH POS: " << pos << " AND NUM WRITER: " << curFileDescIter->second.num_writers << std::endl;
                         if (pos == 0) {
-                            filesystem->file_seek(filename, BLUEFILE_BLOCK_SIZE);
+                            std::string empty_string; // Write 512 block of 0s as place holder for bluefile header
+                            empty_string.resize(BLUEFILE_BLOCK_SIZE, '0');
+                            filesystem->write(fs.in_process_uri_filename, (char*) empty_string.c_str(), BLUEFILE_BLOCK_SIZE, advanced_properties.force_flush);
+                            filesystem->file_seek(fs.in_process_uri_filename, BLUEFILE_BLOCK_SIZE);
                         } else if (curFileDescIter->second.num_writers == 1) {
                             std::vector<char> buff(BLUEFILE_BLOCK_SIZE);
-                            filesystem->file_seek(filename, 0);
-                            filesystem->read(filename, &buff, BLUEFILE_BLOCK_SIZE);
+                            filesystem->file_seek(fs.in_process_uri_filename, 0);
+                            filesystem->read(fs.in_process_uri_filename, &buff, BLUEFILE_BLOCK_SIZE);
                             blue::HeaderControlBlock hcb = blue::HeaderControlBlock((const blue::hcb_s *) & buff[0]);
                             if (hcb.validate(false) != 0) {
-                                LOG_WARN(FileWriter_i, "CAN NOT READ BLUEHEADER FOR APPENDING DATA!\n");
+                            	LOG_WARN(FileWriter_i, "CAN NOT READ BLUEHEADER FOR APPENDING DATA!");
                             }
-                            filesystem->file_seek(filename, hcb.getDataStart() + hcb.getDataSize());
+                            filesystem->file_seek(fs.in_process_uri_filename, hcb.getDataStart() + hcb.getDataSize());
                         }
                     }
 
-
-                    // Opens metadata file
-                    if (advanced_properties.enable_metadata_file && curFileDescIter->second.uri_metadata_filename.empty()) {
-                        curFileDescIter->second.uri_metadata_filename = filename + INPROCESS;
-                        if (!filesystem->open_file(curFileDescIter->second.uri_metadata_filename, true, true)) {
-                            LOG_ERROR(FileWriter_i, "ERROR (" << __PRETTY_FUNCTION__ << "): COULD NOT OPEN METADATA FILE: " << curFileDescIter->second.uri_metadata_filename);
-                            curFileDescIter->second.uri_metadata_filename.clear();
-                            throw std::logic_error("COULD NOT OPEN METADATA FILE!");
-                        }
-                        std::string openXML = "<FileWriter_metadata>";
-                        filesystem->write(curFileDescIter->second.uri_metadata_filename, &openXML, advanced_properties.force_flush);
-                        new_metadata_file = true;
-                    }
-
-
-                }
-                // Throw error if file wasnt opened
-                if (curFileIter == stream_to_file_mapping.end()) {
-                    LOG_ERROR(FileWriter_i, "ERROR (" << __PRETTY_FUNCTION__ << "): COULD NOT OPEN FILE: " << filename);
-                    throw std::logic_error("COULD NOT OPEN FILE!");
+                } else{
+                    curFileDescIter->second.num_writers++;
                 }
             }
 
-            curFileDescIter = file_to_struct_mapping.find(curFileIter->second);
-            if (curFileDescIter == file_to_struct_mapping.end())
-                break;
+            curFileDescIter = file_to_struct_mapping.find(destination_filename);
+            if (curFileDescIter == file_to_struct_mapping.end()){
+                throw std::logic_error("ERROR. SHOULD HAVE CORRESPONDING FILE STRUCTURE OBJECT");
+            }
+
 
             bool eos = (packet->EOS && (stream_id == packet->streamID));
             size_t write_bytes = packet->dataBuffer.size() * sizeof (packet->dataBuffer[0]) - packet_pos;
@@ -563,40 +569,41 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
             }
 
             // Output Data To File
-            LOG_DEBUG(FileWriter_i, " WRITING: " << write_bytes << " BYTES TO FILE: " << curFileIter->second);
-
-            filesystem->write(curFileIter->second, (char*) &packet->dataBuffer[0] + packet_pos, write_bytes, advanced_properties.force_flush);
+            if (debug_output)
+                std::cout << "DEBUG (" << __PRETTY_FUNCTION__ << "): WRITING: " << write_bytes << " BYTES TO FILE: " << curFileDescIter->second.in_process_uri_filename << std::endl;
+            filesystem->write(curFileDescIter->second.in_process_uri_filename, (char*) &packet->dataBuffer[0] + packet_pos, write_bytes, advanced_properties.force_flush);
             curFileDescIter->second.file_size_internal += write_bytes;
             packet_pos += write_bytes;
 
-            // Output Metadata To File
-            if (new_metadata_file || (packet->sriChanged && !curFileDescIter->second.uri_metadata_filename.empty())) {
-                std::string metadata = sri_to_XMLstring(packet->SRI);
-                filesystem->write(curFileDescIter->second.uri_metadata_filename, &metadata, advanced_properties.force_flush);
-                new_metadata_file = false;
-            }
+
             if (packet->sriChanged) {
                 curFileDescIter->second.lastSRI = packet->SRI;
                 curFileDescIter->second.midas_type = midas_type<PACKET_ELEMENT_TYPE > ((curFileDescIter->second.lastSRI.mode == 0));
                 packet->SRI.streamID = stream_id.c_str();
                 dataFile_out->pushSRI(packet->SRI);
+                if (curFileDescIter->second.metdata_file_enabled()) {
+                    std::string metadata = sri_to_XMLstring(packet->SRI);
+                    filesystem->write(curFileDescIter->second.in_process_uri_metadata_filename, &metadata, advanced_properties.force_flush);
+                }
             }
 
             // Close File
-    		if (eos || reached_max_size) {
-    			LOG_DEBUG(FileWriter_i, " *** PROCESSING EOS FOR STREAM ID : " << stream_id );
-    			if (eos && !curFileDescIter->second.uri_metadata_filename.empty()) {
+            if (eos || reached_max_size) {
+                LOG_TRACE(FileWriter_i, " *** PROCESSING EOS FOR STREAM ID : " << stream_id);
+                if (eos && curFileDescIter->second.metdata_file_enabled()) {
                     std::string metadata = eos_to_XMLstring(packet->SRI);
-                    filesystem->write(curFileDescIter->second.uri_metadata_filename, &metadata, advanced_properties.force_flush);
+                    filesystem->write(curFileDescIter->second.in_process_uri_metadata_filename, &metadata, advanced_properties.force_flush);
                 }
-
-    			close_file(curFileIter->second, packet->T, stream_id);
-    			if(reached_max_size && advanced_properties.reset_on_max_file){
-    				stream_to_file_mapping.erase(stream_id);
+                close_file(destination_filename, packet->T, stream_id);
+                if (reached_max_size && advanced_properties.reset_on_max_file) {
+                    stream_to_file_mapping.erase(stream_id);
                 }
             }
-
-        } catch (...) {
+        }
+        catch (const std::logic_error & error) {
+            LOG_TRACE(FileWriter_i, error.what());
+        }
+        catch (...) {
             break;
         };
     } while (packet_pos < packet->dataBuffer.size() * sizeof (packet->dataBuffer[0]));
@@ -616,44 +623,44 @@ bool FileWriter_i::close_file(const std::string& filename, const BULKIO::Precisi
 
 
 	std::string stream_id = streamId;
-	if(stream_id.empty()){
-		stream_id = curFileDescIter->second.lastSRI.streamID;
-		try {
-			std::string tmp = getKeywordValueByID<std::string> ( &curFileDescIter->second.lastSRI, "STREAM_GROUP");
-			stream_id = tmp;
-		} catch (...) {
-		};
-	}
+	updateIfFound_KeywordValueByID<std::string>(&curFileDescIter->second.lastSRI, "STREAM_GROUP",stream_id);
 
 
 	curFileDescIter->second.num_writers--;
 	if (curFileDescIter->second.num_writers <= 0) {
 		if (curFileDescIter->second.file_type == BLUEFILE) {
-			size_t curPos = filesystem->file_tell(curFileDescIter->second.uri_filename);
+			size_t curPos = filesystem->file_tell(curFileDescIter->second.in_process_uri_filename);
 			std::pair<blue::HeaderControlBlock, std::vector<char> > bheaders = createBluefilesHeaders(curFileDescIter->second.lastSRI,
 							curPos, curFileDescIter->second.midas_type, curFileDescIter->second.start_time);
-			filesystem->file_seek(curFileDescIter->second.uri_filename, 0);
+			filesystem->file_seek(curFileDescIter->second.in_process_uri_filename, 0);
 			blue::hcb_s tmp_hcb = bheaders.first.getHCB();
-			filesystem->write(curFileDescIter->second.uri_filename, (char*) & tmp_hcb, BLUEFILE_BLOCK_SIZE, advanced_properties.force_flush);
-			filesystem->file_seek(curFileDescIter->second.uri_filename, curPos);
-			filesystem->write(curFileDescIter->second.uri_filename, (char*) &bheaders.second[0], bheaders.second.size(), advanced_properties.force_flush);
+			filesystem->write(curFileDescIter->second.in_process_uri_filename, (char*) & tmp_hcb, BLUEFILE_BLOCK_SIZE, advanced_properties.force_flush);
+			filesystem->file_seek(curFileDescIter->second.in_process_uri_filename, curPos);
+			filesystem->write(curFileDescIter->second.in_process_uri_filename, (char*) &bheaders.second[0], bheaders.second.size(), advanced_properties.force_flush);
 		}
-		filesystem->close_file(filename);
+		filesystem->close_file(curFileDescIter->second.in_process_uri_filename);
+        if(curFileDescIter->second.in_process_uri_filename != curFileDescIter->second.uri_filename){
+        	filesystem->move_file(curFileDescIter->second.in_process_uri_filename,curFileDescIter->second.uri_filename);
+        }
 
-		file_io_message_struct file_event;
-		file_event.file_operation = "CLOSE";
-		file_event.filename = filesystem->uri_to_file(filename);
-		file_event.stream_id = stream_id;
+        if (curFileDescIter->second.metdata_file_enabled()) {
+        	std::string closeXML = "</FileWriter_metadata>";
+            filesystem->write(curFileDescIter->second.in_process_uri_metadata_filename, &closeXML, advanced_properties.force_flush);
+            filesystem->close_file(curFileDescIter->second.in_process_uri_metadata_filename);
+            if(curFileDescIter->second.in_process_uri_metadata_filename != curFileDescIter->second.uri_metadata_filename){
+            	filesystem->move_file(curFileDescIter->second.in_process_uri_metadata_filename,curFileDescIter->second.uri_metadata_filename);
+            }
+        }
+
+        if (debug_output)
+        	std::cout << "DEBUG (" << __PRETTY_FUNCTION__ << "): CLOSED FILE: " << curFileDescIter->second.uri_filename << std::endl;
+        LOG_INFO(FileWriter_i, "CLOSED FILE: " << curFileDescIter->second.uri_filename );
+
+        file_io_message_struct file_event = create_file_io_message("CLOSE", stream_id, filesystem->uri_to_file(curFileDescIter->second.uri_filename));
 		BULKIO::PrecisionUTCTime tstamp = bulkio::time::utils::now();
 		MessageEvent_out->sendMessage(file_event);
-		dataFile_out->pushPacket(file_event.filename.c_str(), tstamp, true, stream_id.c_str());
-		LOG_DEBUG(FileWriter_i, "CLOSED FILE: " << filename);
-		if (!curFileDescIter->second.uri_metadata_filename.empty()) {
-			std::string closeXML = "</FileWriter_metadata>";
-			filesystem->write(curFileDescIter->second.uri_metadata_filename, &closeXML, advanced_properties.force_flush);
-			filesystem->close_file( curFileDescIter->second.uri_metadata_filename);
-			filesystem->move_file( curFileDescIter->second.uri_metadata_filename, curFileDescIter->second.uri_filename + COMPLETE);
-		}
+		dataFile_out->pushPacket(curFileDescIter->second.uri_filename.c_str(), tstamp, true, stream_id.c_str());
+
 		file_to_struct_mapping.erase(curFileDescIter);
 		curFileDescIter = file_to_struct_mapping.end();
 		return true;
@@ -795,7 +802,7 @@ std::pair<blue::HeaderControlBlock, std::vector<char> > FileWriter_i::createBlue
     hcb.setDataSize(datasize - BLUEFILE_BLOCK_SIZE);
     hcb.setHeaderRep(blue::IEEE); // Note: WVT cannot parse EEEI headers (EEEI datasets are ok)
 
-    if (advanced_properties.swap_bytes) {
+    if (swap_bytes) {
         hcb.setDataRep(blue::EEEI);
     } else {
         hcb.setDataRep(blue::IEEE);

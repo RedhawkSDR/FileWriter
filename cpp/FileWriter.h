@@ -54,6 +54,7 @@
 #include <boost/thread/thread.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/lexical_cast.hpp>
 #include <HeaderControlBlock.h>
 #include <ExtendedHeader.h>
 #include <MidasKey.h>
@@ -61,8 +62,7 @@
 #include <byte_swap.h>
 class FileWriter_i;
 
-#define INPROCESS ".metadata.xml.inProgess"
-#define COMPLETE ".metadata.xml"
+#define METADATA_EXTENSION ".metadata.xml"
 #define BLUEFILE_BLOCK_SIZE 512   // Exact size of fixed header
 
 namespace FILE_READER_DOMAIN_MGR_HELPERS {
@@ -93,20 +93,58 @@ enum FILE_TYPES{
     BLUEFILE = 1
 };
 struct file_struct{
-    file_struct(std::string uri_full_filename, FILE_TYPES type = RAW, double start_time = time(NULL)){
-        uri_filename = uri_full_filename;
-        uri_metadata_filename = "";
-        basename = boost::filesystem::basename(boost::filesystem::path(uri_filename, boost::filesystem::native));
+	file_struct(std::string uri_full_filename, FILE_TYPES type, double start_time, bool enable_metadata, bool hidden_tmp_files,
+				const std::string& open_file_extension, const std::string& open_metadata_file_extension, const std::string& file_stream_id)
+	{
+		uri_filename = uri_full_filename;
+    	uri_metadata_filename = uri_filename + METADATA_EXTENSION;
+    	in_process_uri_filename = "";
+    	in_process_uri_metadata_filename = "";
         file_size_internal = 0;
         num_writers = 1;
         file_type = type;
-        start_time = 0.0;
-        stream_id = "";
+        start_time = start_time;
+        stream_id = file_stream_id;
         midas_type = "";
+
+        boost::filesystem::path uri_path = boost::filesystem::path(uri_filename, boost::filesystem::native);
+        basename = uri_path.filename();
+        dirname = uri_path.parent_path().string();
+
+
+        // Write to tmp file
+        if(hidden_tmp_files){
+            in_process_uri_filename = dirname + "/." + basename ;
+            in_process_uri_metadata_filename = dirname + "/." + basename+ METADATA_EXTENSION ;
+        }
+        else{
+            in_process_uri_filename = dirname + "/" + basename;
+            in_process_uri_metadata_filename = dirname + "/" + basename+ METADATA_EXTENSION ;
+        }
+        if(!open_file_extension.empty())
+            in_process_uri_filename += "." + open_file_extension;
+        if(!open_metadata_file_extension.empty())
+            in_process_uri_metadata_filename += "." + open_metadata_file_extension;
+
+        // Disabling of the metadata file
+        if(!enable_metadata){
+            uri_metadata_filename = "";
+            in_process_uri_metadata_filename = "";
+        }
+
+
     };
+    bool metdata_file_enabled(){
+        return !uri_metadata_filename.empty();
+    }
     std::string uri_filename;
     std::string uri_metadata_filename;
+
+    std::string in_process_uri_filename;
+    std::string in_process_uri_metadata_filename;
+
     std::string basename;
+    std::string dirname;
     unsigned long long file_size_internal;
     size_t num_writers;
     FILE_TYPES file_type;
@@ -161,6 +199,21 @@ private:
 
     std::map<std::string, std::string> stream_to_file_mapping;
     std::map<std::string, file_struct> file_to_struct_mapping;
+
+    bool remove_file_from_filesystem(const std::string& filename){
+        if(filesystem && !filename.empty()){
+            return filesystem->delete_file(filename);
+        }
+        return false;
+    }
+
+    file_io_message_struct create_file_io_message(const std::string& file_operation, const std::string& stream_id, const std::string& filename){
+        file_io_message_struct f;
+        f.file_operation = file_operation;
+        f.stream_id = stream_id;
+        f.filename = filename;
+        return f;
+    }
 
     inline std::string replace_string(std::string whole_string, const std::string& cur_substr, const std::string& new_substr) {
         boost::algorithm::replace_all(whole_string,cur_substr,new_substr);
@@ -296,6 +349,16 @@ private:
     		}
     	}
     	throw std::logic_error("KEYWORD NOT FOUND!");
+    }
+
+    template <typename MYTYPE> bool updateIfFound_KeywordValueByID(BULKIO::StreamSRI *sri, CORBA::String_member id, MYTYPE& current) throw(std::logic_error){
+    	try {
+            MYTYPE value = getKeywordValueByID<MYTYPE>(sri, id);
+            current = value;
+            return true;
+        } catch (...) {
+        };
+        return false;
     }
 
 };

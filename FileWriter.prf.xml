@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE properties PUBLIC "-//JTRS//DTD SCA V2.2.2 PRF//EN" "properties.dtd">
 <properties>
+  <simple id="debug_output" mode="readwrite" name="debug_output" type="boolean">
+    <value>false</value>
+    <kind kindtype="configure"/>
+    <action type="external"/>
+  </simple>
   <simple id="destination_uri" mode="readwrite" name="destination_uri" type="string">
     <description>URI accepted prefix's:
 file://	Local Filesystem
@@ -13,7 +18,6 @@ sca:// 	SCA Filesystem (path relative to SDRROOT/dom)
   </simple>
   <simple id="destination_uri_suffix" mode="readwrite" name="destination_uri_suffix" type="string">
     <description>Will be appended to the destination_uri</description>
-    <value></value>
     <kind kindtype="configure"/>
     <action type="external"/>
   </simple>
@@ -23,6 +27,12 @@ sca:// 	SCA Filesystem (path relative to SDRROOT/dom)
       <enumeration label="BLUE/PLATINUM FILE" value="BLUEFILE"/>
       <enumeration label="RAW (BULKIO)" value="RAW"/>
     </enumerations>
+    <kind kindtype="configure"/>
+    <action type="external"/>
+  </simple>
+  <simple id="swap_bytes" mode="readwrite" name="swap_bytes" type="boolean">
+    <description>iEEE EEEI (</description>
+    <value>false</value>
     <kind kindtype="configure"/>
     <action type="external"/>
   </simple>
@@ -39,7 +49,11 @@ sca:// 	SCA Filesystem (path relative to SDRROOT/dom)
       <action type="external"/>
     </simple>
     <simple id="advanced_properties::max_file_size" mode="readwrite" name="max_file_size" type="string">
-      <description></description>
+      <description>Allowed Units:
+[None = Bytes]
+KB (1024 Bytes)
+MB (1024^2 Bytes)
+GB (10</description>
       <value>UNLIMITED</value>
       <kind kindtype="configure"/>
       <action type="external"/>
@@ -72,17 +86,22 @@ sca:// 	SCA Filesystem (path relative to SDRROOT/dom)
       <kind kindtype="configure"/>
       <action type="external"/>
     </simple>
-    <simple id="advanced_properties::swap_bytes" mode="readwrite" name="swap_bytes" type="boolean">
-      <description>iEEE EEEI (</description>
-      <value>false</value>
-      <kind kindtype="configure"/>
-      <action type="external"/>
-    </simple>
     <simple id="advanced_properties::reset_on_max_file" name="reset_on_max_file" type="boolean">
       <value>true</value>
     </simple>
     <simple id="advanced_properties::reset_on_retune" name="reset_on_retune" type="boolean">
-      <value>false</value>
+      <value>true</value>
+    </simple>
+    <simple id="advanced_properties::use_hidden_files" mode="readwrite" name="use_hidden_files" type="boolean">
+      <value>true</value>
+      <kind kindtype="configure"/>
+      <action type="external"/>
+    </simple>
+    <simple id="advanced_properties::open_file_extension" name="open_file_extension" type="string">
+      <value>inProgress</value>
+    </simple>
+    <simple id="advanced_properties::open_metadata_file_extension" name="open_metadata_file_extension" type="string">
+      <value>inProgress</value>
     </simple>
     <configurationkind kindtype="configure"/>
   </struct>

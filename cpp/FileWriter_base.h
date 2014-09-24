@@ -1,23 +1,3 @@
-/*
- * This file is protected by Copyright. Please refer to the COPYRIGHT file
- * distributed with this source distribution.
- *
- * This file is part of FilterDecimate.
- *
- * FilterDecimate is free software: you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation, either version 3 of the License, or (at your
- * option) any later version.
- *
- * FilterDecimate is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see http://www.gnu.org/licenses/.
- */
-
 #ifndef FILEWRITER_IMPL_BASE_H
 #define FILEWRITER_IMPL_BASE_H
 
@@ -48,9 +28,11 @@ class FileWriter_base : public Resource_impl, protected ThreadedComponent
 
     protected:
         // Member variables exposed as properties
+        bool debug_output;
         std::string destination_uri;
         std::string destination_uri_suffix;
         std::string file_format;
+        bool swap_bytes;
         bool recording_enabled;
         advanced_properties_struct advanced_properties;
         file_io_message_struct file_io_message;

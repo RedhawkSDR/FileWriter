@@ -18,9 +18,11 @@ struct advanced_properties_struct {
         existing_file = "RENAME";
         create_destination_dir = true;
         enable_metadata_file = false;
-        swap_bytes = false;
         reset_on_max_file = true;
-        reset_on_retune = false;
+        reset_on_retune = true;
+        use_hidden_files = true;
+        open_file_extension = "inProgress";
+        open_metadata_file_extension = "inProgress";
     };
 
     static std::string getId() {
@@ -33,9 +35,11 @@ struct advanced_properties_struct {
     std::string existing_file;
     bool create_destination_dir;
     bool enable_metadata_file;
-    bool swap_bytes;
     bool reset_on_max_file;
     bool reset_on_retune;
+    bool use_hidden_files;
+    std::string open_file_extension;
+    std::string open_metadata_file_extension;
 };
 
 inline bool operator>>= (const CORBA::Any& a, advanced_properties_struct& s) {
@@ -61,14 +65,20 @@ inline bool operator>>= (const CORBA::Any& a, advanced_properties_struct& s) {
         else if (!strcmp("advanced_properties::enable_metadata_file", props[idx].id)) {
             if (!(props[idx].value >>= s.enable_metadata_file)) return false;
         }
-        else if (!strcmp("advanced_properties::swap_bytes", props[idx].id)) {
-            if (!(props[idx].value >>= s.swap_bytes)) return false;
-        }
         else if (!strcmp("advanced_properties::reset_on_max_file", props[idx].id)) {
             if (!(props[idx].value >>= s.reset_on_max_file)) return false;
         }
         else if (!strcmp("advanced_properties::reset_on_retune", props[idx].id)) {
             if (!(props[idx].value >>= s.reset_on_retune)) return false;
+        }
+        else if (!strcmp("advanced_properties::use_hidden_files", props[idx].id)) {
+            if (!(props[idx].value >>= s.use_hidden_files)) return false;
+        }
+        else if (!strcmp("advanced_properties::open_file_extension", props[idx].id)) {
+            if (!(props[idx].value >>= s.open_file_extension)) return false;
+        }
+        else if (!strcmp("advanced_properties::open_metadata_file_extension", props[idx].id)) {
+            if (!(props[idx].value >>= s.open_metadata_file_extension)) return false;
         }
     }
     return true;
@@ -76,7 +86,7 @@ inline bool operator>>= (const CORBA::Any& a, advanced_properties_struct& s) {
 
 inline void operator<<= (CORBA::Any& a, const advanced_properties_struct& s) {
     CF::Properties props;
-    props.length(9);
+    props.length(11);
     props[0].id = CORBA::string_dup("advanced_properties::force_flush");
     props[0].value <<= s.force_flush;
     props[1].id = CORBA::string_dup("advanced_properties::max_file_size");
@@ -89,12 +99,16 @@ inline void operator<<= (CORBA::Any& a, const advanced_properties_struct& s) {
     props[4].value <<= s.create_destination_dir;
     props[5].id = CORBA::string_dup("advanced_properties::enable_metadata_file");
     props[5].value <<= s.enable_metadata_file;
-    props[6].id = CORBA::string_dup("advanced_properties::swap_bytes");
-    props[6].value <<= s.swap_bytes;
-    props[7].id = CORBA::string_dup("advanced_properties::reset_on_max_file");
-    props[7].value <<= s.reset_on_max_file;
-    props[8].id = CORBA::string_dup("advanced_properties::reset_on_retune");
-    props[8].value <<= s.reset_on_retune;
+    props[6].id = CORBA::string_dup("advanced_properties::reset_on_max_file");
+    props[6].value <<= s.reset_on_max_file;
+    props[7].id = CORBA::string_dup("advanced_properties::reset_on_retune");
+    props[7].value <<= s.reset_on_retune;
+    props[8].id = CORBA::string_dup("advanced_properties::use_hidden_files");
+    props[8].value <<= s.use_hidden_files;
+    props[9].id = CORBA::string_dup("advanced_properties::open_file_extension");
+    props[9].value <<= s.open_file_extension;
+    props[10].id = CORBA::string_dup("advanced_properties::open_metadata_file_extension");
+    props[10].value <<= s.open_metadata_file_extension;
     a <<= props;
 };
 
@@ -111,11 +125,15 @@ inline bool operator== (const advanced_properties_struct& s1, const advanced_pro
         return false;
     if (s1.enable_metadata_file!=s2.enable_metadata_file)
         return false;
-    if (s1.swap_bytes!=s2.swap_bytes)
-        return false;
     if (s1.reset_on_max_file!=s2.reset_on_max_file)
         return false;
     if (s1.reset_on_retune!=s2.reset_on_retune)
+        return false;
+    if (s1.use_hidden_files!=s2.use_hidden_files)
+        return false;
+    if (s1.open_file_extension!=s2.open_file_extension)
+        return false;
+    if (s1.open_metadata_file_extension!=s2.open_metadata_file_extension)
         return false;
     return true;
 };
