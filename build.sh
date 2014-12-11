@@ -24,11 +24,11 @@ if [ "$1" = "rpm" ]; then
         mydir=`dirname $0`
         tmpdir=`mktemp -d`
         echo "1"
-	cp -r ${mydir} ${tmpdir}/FileWriter-3.0.0dev0
+	cp -r ${mydir} ${tmpdir}/FileWriter-3.0.0
         echo "2"
-	tar czf ${tmpdir}/FileWriter-3.0.0dev0.tar.gz --exclude=".svn" -C ${tmpdir} FileWriter-3.0.0dev0
+	tar czf ${tmpdir}/FileWriter-3.0.0.tar.gz --exclude=".svn" -C ${tmpdir} FileWriter-3.0.0
         echo "3"
-	rpmbuild -ta ${tmpdir}/FileWriter-3.0.0dev0.tar.gz
+	rpmbuild -ta ${tmpdir}/FileWriter-3.0.0.tar.gz
         echo "4"
 	rm -rf $tmpdir
     else

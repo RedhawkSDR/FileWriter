@@ -1,9 +1,8 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE softpkg PUBLIC "-//JTRS//DTD SCA V2.2.2 SPD//EN" "softpkg.dtd">
-<softpkg id="DCE:11e814bc-c631-400a-a48d-f0f153d5fa9e" name="FileWriter" type="sca_compliant" version="3.0.0-dev0">
-  <title></title>
+<softpkg version="3.0.0" id="DCE:11e814bc-c631-400a-a48d-f0f153d5fa9e" name="FileWriter" type="sca_compliant">
+  <title/>
   <author>
-    <name></name>
+    <name/>
   </author>
   <propertyfile type="PRF">
     <localfile name="FileWriter.prf.xml"/>
