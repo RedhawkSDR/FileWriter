@@ -193,7 +193,7 @@ private:
 
     // Ensure that configure() and serviceFunction() are thread safe
     boost::mutex service_thread_lock;
-    ABSTRACTED_FILE_IO::abstracted_file_io* filesystem;
+    ABSTRACTED_FILE_IO::abstracted_file_io filesystem;
     FILE_TYPES current_writer_type;
 
 
@@ -201,8 +201,8 @@ private:
     std::map<std::string, file_struct> file_to_struct_mapping;
 
     bool remove_file_from_filesystem(const std::string& filename){
-        if(filesystem && !filename.empty()){
-            return filesystem->delete_file(filename);
+        if(!filename.empty()){
+            return filesystem.delete_file(filename);
         }
         return false;
     }

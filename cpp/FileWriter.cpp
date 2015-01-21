@@ -35,7 +35,6 @@ FileWriter_i::FileWriter_i(const char *uuid, const char *label) :
 FileWriter_base(uuid, label) {
     maxSize = 0;
     timer_set_iter = timer_set.end();
-    filesystem = new ABSTRACTED_FILE_IO::abstracted_file_io();
     //properties are not updated until callback function is called and they are explicitly set.
     addPropertyChangeListener("destination_uri", this, &FileWriter_i::destination_uriChanged);
     addPropertyChangeListener("destination_uri_suffix", this, &FileWriter_i::destination_uri_suffixChanged);
@@ -46,24 +45,21 @@ FileWriter_base(uuid, label) {
 }
 
 FileWriter_i::~FileWriter_i() {
-    if (filesystem)
-        delete filesystem;
-    filesystem = NULL;
-
 }
 
 void FileWriter_i::initialize() throw (CF::LifeCycle::InitializeError, CORBA::SystemException) {
     FileWriter_base::initialize();
     try {
-        if(!filesystem->is_sca_file_manager_valid()){
+        if(!filesystem.is_sca_file_manager_valid()){
 			CF::DomainManager_var dm = CF::DomainManager::_nil();
 			if (getDomainManager() && !CORBA::is_nil(getDomainManager()->getRef())) {
 				std::string dom_id = ossie::corba::returnString(getDomainManager()->getRef()->identifier());
 				dm = FILE_WRITER_DOMAIN_MGR_HELPERS::domainManager_id_to_var(dom_id);
 			}
-		    filesystem->update_sca_file_manager(dm->fileMgr());
+        	filesystem.update_sca_file_manager(dm->fileMgr());
         	component_status.domain_name = ossie::corba::returnString(dm->name());
         }
+
     } catch (...) {
     	LOG_DEBUG(FileWriter_i,"Exception caught while attempting to update sca file manager");
     	//component_status.domain_name = "(domainless)"; // leave as default value
@@ -84,17 +80,13 @@ void FileWriter_i::start() throw (CF::Resource::StartError, CORBA::SystemExcepti
 void FileWriter_i::stop() throw (CF::Resource::StopError, CORBA::SystemException) {
     FileWriter_base::stop();
 
-    if (filesystem != NULL) {
-        exclusive_lock lock(service_thread_lock);
+	exclusive_lock lock(service_thread_lock);
 
-        for (std::map<std::string, std::string>::iterator curFileIter = stream_to_file_mapping.begin(); curFileIter != stream_to_file_mapping.end(); curFileIter++) {
-        	close_file(curFileIter->second, getSystemTimestamp());
-        }
-        stream_to_file_mapping.clear();
-        timer_set_iter = timer_set.end();
-
-    }
-
+	for (std::map<std::string, std::string>::iterator curFileIter = stream_to_file_mapping.begin(); curFileIter != stream_to_file_mapping.end(); curFileIter++) {
+		close_file(curFileIter->second, getSystemTimestamp());
+	}
+	stream_to_file_mapping.clear();
+	timer_set_iter = timer_set.end();
 }
 
 void FileWriter_i::destination_uriChanged(const std::string *oldValue, const std::string *newValue) {
@@ -113,24 +105,25 @@ void FileWriter_i::destination_uri_suffixChanged(const std::string *oldValue, co
 
 void FileWriter_i::change_uri() {
     std::string destination_uri_full = destination_uri + destination_uri_suffix;
-    std::string normFile = filesystem->normalize_uri_path(destination_uri_full);
+    std::string normFile = filesystem.normalize_uri_path(destination_uri_full);
     std::string prefix, dir, base;
     ABSTRACTED_FILE_IO::FILESYSTEM_TYPE type;
-    filesystem->uri_path_extraction(normFile, dir, base, type);
+    filesystem.uri_path_extraction(normFile, dir, base, type);
     prefix = ABSTRACTED_FILE_IO::local_uri_prefix;
     if (type == ABSTRACTED_FILE_IO::SCA_FILESYSTEM) {
         prefix = ABSTRACTED_FILE_IO::sca_uri_prefix;
         //do{
         try {
-            if(!filesystem->is_sca_file_manager_valid()){
+            if(!filesystem.is_sca_file_manager_valid()){
     			CF::DomainManager_var dm = CF::DomainManager::_nil();
     			if (getDomainManager() && !CORBA::is_nil(getDomainManager()->getRef())) {
     				std::string dom_id = ossie::corba::returnString(getDomainManager()->getRef()->identifier());
     				dm = FILE_WRITER_DOMAIN_MGR_HELPERS::domainManager_id_to_var(dom_id);
-    			}
-    		    filesystem->update_sca_file_manager(dm->fileMgr());
+                }
+                filesystem.update_sca_file_manager(dm->fileMgr());
             	component_status.domain_name = ossie::corba::returnString(dm->name());
             }
+
         } catch (...) {
         	LOG_DEBUG(FileWriter_i,"Exception caught while attempting to update sca file manager");
         	//component_status.domain_name = "(domainless)"; // leave as default value
@@ -147,24 +140,24 @@ void FileWriter_i::change_uri() {
                 sdr_root.append("/dom/");
                 destination_uri_full.insert(7,sdr_root);
             }
-            normFile= filesystem->normalize_uri_path(destination_uri_full);
-            filesystem->uri_path_extraction(normFile, dir, base, type);
+            normFile= filesystem.normalize_uri_path(destination_uri_full);
+            filesystem.uri_path_extraction(normFile, dir, base, type);
             prefix = ABSTRACTED_FILE_IO::local_uri_prefix;
         };
     }
     prop_dirname = prefix + dir;
     prop_basename = base;
     prop_full_filename = prop_dirname + base;
-    if (!filesystem->exists(prop_dirname)) {
-
+    if (!filesystem.exists(prop_dirname)) {
+    
         if (!advanced_properties.create_destination_dir) {
 
             LOG_ERROR(FileWriter_i, "Error: destination directory does not exist!\n");
             throw CF::PropertySet::InvalidConfiguration(); //"Error: destination directory does not exist!");
         }
-
-    if (!filesystem->make_dir(prop_dirname)) {
-
+    
+    if (!filesystem.make_dir(prop_dirname)) {
+    
         LOG_ERROR(FileWriter_i, "Error: could not create destination directory!\n");
             throw CF::PropertySet::InvalidConfiguration(); //"Error: could not create destination directory!",advanced_properties);
         }
@@ -477,7 +470,7 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
                 destination_filename = prop_dirname + basename;
                 bool append = false;
                 // Unless the file is appending, do something if the file already exists
-                if (filesystem->exists(destination_filename)) {
+                if (filesystem.exists(destination_filename)) {
                     if (existing_file == "DROP")
                         throw std::logic_error("File Exists. Dropping Packet!");
                     else if (existing_file == "TRUNCATE") {
@@ -491,9 +484,9 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
                         do {
                             tmpFN = destination_filename + "-" + boost::lexical_cast<std::string>(counter);
                             counter++;
-                        } while (filesystem->exists(tmpFN) && counter <= 1024);
+                        } while (filesystem.exists(tmpFN) && counter <= 1024);
                         destination_filename = tmpFN;
-                        if (filesystem->exists(destination_filename))
+                        if (filesystem.exists(destination_filename))
                             throw std::logic_error("Cannot rename file to an available name. Dropping Reset of Packet!");
                     } else if (existing_file == "APPEND") {
                         append = true;
@@ -507,11 +500,11 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
                     double curTime = packet->T.toff + packet->T.twsec + packet->T.tfsec;
                     file_struct fs(destination_filename, current_writer_type, curTime, advanced_properties.enable_metadata_file, advanced_properties.use_hidden_files, advanced_properties.open_file_extension, advanced_properties.open_metadata_file_extension, stream_id);
                     curFileDescIter = file_to_struct_mapping.insert(std::make_pair(destination_filename, fs)).first;
-                    curFileDescIter->second.file_size_internal = filesystem->file_size(curFileDescIter->second.in_process_uri_filename);
+                    curFileDescIter->second.file_size_internal = filesystem.file_size(curFileDescIter->second.in_process_uri_filename);
 
-                    bool open_success = filesystem->open_file(curFileDescIter->second.in_process_uri_filename, true, append);
+                    bool open_success = filesystem.open_file(curFileDescIter->second.in_process_uri_filename, true, append);
                     if (curFileDescIter->second.metdata_file_enabled())
-                        open_success |= filesystem->open_file(curFileDescIter->second.in_process_uri_metadata_filename, true, append);
+                        open_success |= filesystem.open_file(curFileDescIter->second.in_process_uri_metadata_filename, true, append);
                     if (!open_success) {
                         close_file(destination_filename, packet->T, stream_id);
                         stream_to_file_mapping.erase(stream_id);
@@ -525,7 +518,7 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
                             << " OR FILE (TMP): " << fs.uri_filename << std::endl;
                     LOG_INFO(FileWriter_i, " OPENED STREAM: " << packet->streamID << " (" << stream_id << ") " << " OR FILE (TMP): " << fs.in_process_uri_filename << " OR FILE (TMP): " << fs.uri_filename);
 
-                    file_io_message_struct file_event = create_file_io_message("OPEN", stream_id, filesystem->uri_to_file(fs.in_process_uri_filename));
+                    file_io_message_struct file_event = create_file_io_message("OPEN", stream_id, filesystem.uri_to_file(fs.in_process_uri_filename));
                     MessageEvent_out->sendMessage(file_event);
 
                     curFileDescIter->second.lastSRI = packet->SRI;
@@ -533,7 +526,7 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
                     // Initialize Metadata File
                     if (curFileDescIter->second.metdata_file_enabled()){
                         std::string openXML = "<FileWriter_metadata>";
-                        filesystem->write(curFileDescIter->second.in_process_uri_metadata_filename, &openXML, advanced_properties.force_flush);
+                        filesystem.write(curFileDescIter->second.in_process_uri_metadata_filename, &openXML, advanced_properties.force_flush);
                     }
 
                     // BLUEFILE
@@ -544,17 +537,17 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
                         if (pos == 0) {
                             std::string empty_string; // Write 512 block of 0s as place holder for bluefile header
                             empty_string.resize(BLUEFILE_BLOCK_SIZE, '0');
-                            filesystem->write(fs.in_process_uri_filename, (char*) empty_string.c_str(), BLUEFILE_BLOCK_SIZE, advanced_properties.force_flush);
-                            filesystem->file_seek(fs.in_process_uri_filename, BLUEFILE_BLOCK_SIZE);
+                            filesystem.write(fs.in_process_uri_filename, (char*) empty_string.c_str(), BLUEFILE_BLOCK_SIZE, advanced_properties.force_flush);
+                            filesystem.file_seek(fs.in_process_uri_filename, BLUEFILE_BLOCK_SIZE);
                         } else if (curFileDescIter->second.num_writers == 1) {
                             std::vector<char> buff(BLUEFILE_BLOCK_SIZE);
-                            filesystem->file_seek(fs.in_process_uri_filename, 0);
-                            filesystem->read(fs.in_process_uri_filename, &buff, BLUEFILE_BLOCK_SIZE);
+                            filesystem.file_seek(fs.in_process_uri_filename, 0);
+                            filesystem.read(fs.in_process_uri_filename, &buff, BLUEFILE_BLOCK_SIZE);
                             blue::HeaderControlBlock hcb = blue::HeaderControlBlock((const blue::hcb_s *) & buff[0]);
                             if (hcb.validate(false) != 0) {
                             	LOG_WARN(FileWriter_i, "CAN NOT READ BLUEHEADER FOR APPENDING DATA!");
                             }
-                            filesystem->file_seek(fs.in_process_uri_filename, hcb.getDataStart() + hcb.getDataSize());
+                            filesystem.file_seek(fs.in_process_uri_filename, hcb.getDataStart() + hcb.getDataSize());
                         }
                     }
 
@@ -596,7 +589,7 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
                 std::cout << "DEBUG (" << __PRETTY_FUNCTION__ << "): WRITING: " << write_bytes << " BYTES TO FILE: " << curFileDescIter->second.in_process_uri_filename << std::endl;
                 LOG_DEBUG(FileWriter_i,"WRITING: " << write_bytes << " BYTES TO FILE: " << curFileDescIter->second.in_process_uri_filename );
             }
-            filesystem->write(curFileDescIter->second.in_process_uri_filename, (char*) &packet->dataBuffer[0] + packet_pos, write_bytes, advanced_properties.force_flush);
+            filesystem.write(curFileDescIter->second.in_process_uri_filename, (char*) &packet->dataBuffer[0] + packet_pos, write_bytes, advanced_properties.force_flush);
             curFileDescIter->second.file_size_internal += write_bytes;
             packet_pos += write_bytes;
 
@@ -608,7 +601,7 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
                 dataFile_out->pushSRI(packet->SRI);
                 if (curFileDescIter->second.metdata_file_enabled()) {
                     std::string metadata = sri_to_XMLstring(packet->SRI);
-                    filesystem->write(curFileDescIter->second.in_process_uri_metadata_filename, &metadata, advanced_properties.force_flush);
+                    filesystem.write(curFileDescIter->second.in_process_uri_metadata_filename, &metadata, advanced_properties.force_flush);
                 }
             }
 
@@ -617,7 +610,7 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
                 LOG_DEBUG(FileWriter_i, " *** PROCESSING EOS FOR STREAM ID : " << stream_id);
                 if (eos && curFileDescIter->second.metdata_file_enabled()) {
                     std::string metadata = eos_to_XMLstring(packet->SRI);
-                    filesystem->write(curFileDescIter->second.in_process_uri_metadata_filename, &metadata, advanced_properties.force_flush);
+                    filesystem.write(curFileDescIter->second.in_process_uri_metadata_filename, &metadata, advanced_properties.force_flush);
                 }
                 close_file(destination_filename, packet->T, stream_id);
                 if (reached_max_size && advanced_properties.reset_on_max_file) {
@@ -661,26 +654,26 @@ bool FileWriter_i::close_file(const std::string& filename, const BULKIO::Precisi
 	curFileDescIter->second.num_writers--;
 	if (curFileDescIter->second.num_writers <= 0) {
 		if (curFileDescIter->second.file_type == BLUEFILE) {
-			size_t curPos = filesystem->file_tell(curFileDescIter->second.in_process_uri_filename);
+			size_t curPos = filesystem.file_tell(curFileDescIter->second.in_process_uri_filename);
 			std::pair<blue::HeaderControlBlock, std::vector<char> > bheaders = createBluefilesHeaders(curFileDescIter->second.lastSRI,
 							curPos, curFileDescIter->second.midas_type, curFileDescIter->second.start_time);
-			filesystem->file_seek(curFileDescIter->second.in_process_uri_filename, 0);
+			filesystem.file_seek(curFileDescIter->second.in_process_uri_filename, 0);
 			blue::hcb_s tmp_hcb = bheaders.first.getHCB();
-			filesystem->write(curFileDescIter->second.in_process_uri_filename, (char*) & tmp_hcb, BLUEFILE_BLOCK_SIZE, advanced_properties.force_flush);
-			filesystem->file_seek(curFileDescIter->second.in_process_uri_filename, curPos);
-			filesystem->write(curFileDescIter->second.in_process_uri_filename, (char*) &bheaders.second[0], bheaders.second.size(), advanced_properties.force_flush);
+			filesystem.write(curFileDescIter->second.in_process_uri_filename, (char*) & tmp_hcb, BLUEFILE_BLOCK_SIZE, advanced_properties.force_flush);
+			filesystem.file_seek(curFileDescIter->second.in_process_uri_filename, curPos);
+			filesystem.write(curFileDescIter->second.in_process_uri_filename, (char*) &bheaders.second[0], bheaders.second.size(), advanced_properties.force_flush);
 		}
-		filesystem->close_file(curFileDescIter->second.in_process_uri_filename);
+		filesystem.close_file(curFileDescIter->second.in_process_uri_filename);
         if(curFileDescIter->second.in_process_uri_filename != curFileDescIter->second.uri_filename){
-        	filesystem->move_file(curFileDescIter->second.in_process_uri_filename,curFileDescIter->second.uri_filename);
+        	filesystem.move_file(curFileDescIter->second.in_process_uri_filename,curFileDescIter->second.uri_filename);
         }
 
         if (curFileDescIter->second.metdata_file_enabled()) {
         	std::string closeXML = "</FileWriter_metadata>";
-            filesystem->write(curFileDescIter->second.in_process_uri_metadata_filename, &closeXML, advanced_properties.force_flush);
-            filesystem->close_file(curFileDescIter->second.in_process_uri_metadata_filename);
+            filesystem.write(curFileDescIter->second.in_process_uri_metadata_filename, &closeXML, advanced_properties.force_flush);
+            filesystem.close_file(curFileDescIter->second.in_process_uri_metadata_filename);
             if(curFileDescIter->second.in_process_uri_metadata_filename != curFileDescIter->second.uri_metadata_filename){
-            	filesystem->move_file(curFileDescIter->second.in_process_uri_metadata_filename,curFileDescIter->second.uri_metadata_filename);
+            	filesystem.move_file(curFileDescIter->second.in_process_uri_metadata_filename,curFileDescIter->second.uri_metadata_filename);
             }
         }
 
@@ -688,7 +681,7 @@ bool FileWriter_i::close_file(const std::string& filename, const BULKIO::Precisi
         	std::cout << "DEBUG (" << __PRETTY_FUNCTION__ << "): CLOSED FILE: " << curFileDescIter->second.uri_filename << std::endl;
         LOG_INFO(FileWriter_i, "CLOSED FILE: " << curFileDescIter->second.uri_filename );
 
-        std::string sca_filename = filesystem->uri_to_file(curFileDescIter->second.uri_filename);
+        std::string sca_filename = filesystem.uri_to_file(curFileDescIter->second.uri_filename);
         file_io_message_struct file_event = create_file_io_message("CLOSE", stream_id, sca_filename);
 		BULKIO::PrecisionUTCTime tstamp = bulkio::time::utils::now();
 		MessageEvent_out->sendMessage(file_event);
