@@ -19,7 +19,7 @@
  along with this program.  If not, see http://www.gnu.org/licenses/.
 -->
 <!DOCTYPE softpkg PUBLIC "-//JTRS//DTD SCA V2.2.2 SPD//EN" "softpkg.dtd">
-<softpkg id="DCE:11e814bc-c631-400a-a48d-f0f153d5fa9e" name="FileWriter" type="sca_compliant" version="3.0.0">
+<softpkg id="DCE:11e814bc-c631-400a-a48d-f0f153d5fa9e" name="FileWriter" type="sca_compliant" version="4.0.0">
   <title></title>
   <author>
     <name></name>

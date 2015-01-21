@@ -22,14 +22,10 @@ if [ "$1" = "rpm" ]; then
     if [ -e FileWriter.spec ]; then
         mydir=`dirname $0`
         tmpdir=`mktemp -d`
-        echo "1"
-	cp -r ${mydir} ${tmpdir}/FileWriter-3.0.0
-        echo "2"
-	tar czf ${tmpdir}/FileWriter-3.0.0.tar.gz --exclude=".svn" -C ${tmpdir} FileWriter-3.0.0
-        echo "3"
-	rpmbuild -ta ${tmpdir}/FileWriter-3.0.0.tar.gz
-        echo "4"
-	rm -rf $tmpdir
+        cp -r ${mydir} ${tmpdir}/FileWriter-4.0.0
+        tar czf ${tmpdir}/FileWriter-4.0.0.tar.gz --exclude=".svn" -C ${tmpdir} FileWriter-4.0.0
+        rpmbuild -ta ${tmpdir}/FileWriter-4.0.0.tar.gz
+        rm -rf $tmpdir
     else
         echo "Missing RPM spec file in" `pwd`
         exit 1
@@ -38,7 +34,15 @@ else
     for impl in cpp ; do
         cd $impl
         if [ -e build.sh ]; then
-            ./build.sh $*
+            if [ $# == 1 ]; then
+                if [ $1 == 'clean' ]; then
+                    ./build.sh distclean
+                else
+                    ./build.sh $*
+                fi
+            else
+                ./build.sh $*
+            fi
         elif [ -e reconf ]; then
             ./reconf && ./configure && make $*
         else

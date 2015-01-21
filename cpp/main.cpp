@@ -25,7 +25,7 @@
 int main(int argc, char* argv[])
 {
     FileWriter_i* FileWriter_servant;
-    Resource_impl::start_component(FileWriter_servant, argc, argv);
+    Component::start_component(FileWriter_servant, argc, argv);
     return 0;
 }
 

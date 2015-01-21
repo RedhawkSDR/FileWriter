@@ -22,6 +22,7 @@ bin_PROGRAMS = FileWriter
 
 xmldir = $(prefix)/dom/components/FileWriter/
 dist_xml_DATA = ../FileWriter.scd.xml ../FileWriter.prf.xml ../FileWriter.spd.xml
+ACLOCAL_AMFLAGS = -I$(OSSIEHOME)/share/aclocal/ossie
 
 
 distclean-local:

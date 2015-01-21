@@ -22,18 +22,15 @@
 #define FILEWRITER_IMPL_BASE_H
 
 #include <boost/thread.hpp>
-#include <ossie/Resource_impl.h>
+#include <ossie/Component.h>
 #include <ossie/ThreadedComponent.h>
 
 #include <bulkio/bulkio.h>
-#include "port_impl.h"
 #include <ossie/MessageInterface.h>
 #include "struct_props.h"
 
-class FileWriter_base : public Resource_impl, protected ThreadedComponent
+class FileWriter_base : public Component, protected ThreadedComponent
 {
-    friend class CF_DomainManager_Out_i;
-
     public:
         FileWriter_base(const char *uuid, const char *label);
         ~FileWriter_base();
@@ -48,7 +45,6 @@ class FileWriter_base : public Resource_impl, protected ThreadedComponent
 
     protected:
         // Member variables exposed as properties
-        bool debug_output;
         std::string destination_uri;
         std::string destination_uri_suffix;
         std::string file_format;
@@ -56,6 +52,7 @@ class FileWriter_base : public Resource_impl, protected ThreadedComponent
         bool recording_enabled;
         advanced_properties_struct advanced_properties;
         file_io_message_struct file_io_message;
+        component_status_struct component_status;
         std::vector<timer_struct_struct> recording_timer;
 
         // Ports
@@ -66,7 +63,6 @@ class FileWriter_base : public Resource_impl, protected ThreadedComponent
         bulkio::InFloatPort *dataFloat_in;
         bulkio::InDoublePort *dataDouble_in;
         bulkio::InXMLPort *dataXML_in;
-        CF_DomainManager_Out_i *DomainManager_out;
         MessageSupplierPort *MessageEvent_out;
         bulkio::OutFilePort *dataFile_out;
 

@@ -31,7 +31,7 @@
 ******************************************************************************************/
 
 FileWriter_base::FileWriter_base(const char *uuid, const char *label) :
-    Resource_impl(uuid, label),
+    Component(uuid, label),
     ThreadedComponent()
 {
     loadProperties();
@@ -50,8 +50,6 @@ FileWriter_base::FileWriter_base(const char *uuid, const char *label) :
     addPort("dataDouble_in", dataDouble_in);
     dataXML_in = new bulkio::InXMLPort("dataXML_in");
     addPort("dataXML_in", dataXML_in);
-    DomainManager_out = new CF_DomainManager_Out_i("DomainManager_out", this);
-    addPort("DomainManager_out", DomainManager_out);
     MessageEvent_out = new MessageSupplierPort("MessageEvent_out");
     addPort("MessageEvent_out", MessageEvent_out);
     dataFile_out = new bulkio::OutFilePort("dataFile_out");
@@ -74,8 +72,6 @@ FileWriter_base::~FileWriter_base()
     dataDouble_in = 0;
     delete dataXML_in;
     dataXML_in = 0;
-    delete DomainManager_out;
-    DomainManager_out = 0;
     delete MessageEvent_out;
     MessageEvent_out = 0;
     delete dataFile_out;
@@ -88,13 +84,13 @@ FileWriter_base::~FileWriter_base()
 *******************************************************************************************/
 void FileWriter_base::start() throw (CORBA::SystemException, CF::Resource::StartError)
 {
-    Resource_impl::start();
+    Component::start();
     ThreadedComponent::startThread();
 }
 
 void FileWriter_base::stop() throw (CORBA::SystemException, CF::Resource::StopError)
 {
-    Resource_impl::stop();
+    Component::stop();
     if (!ThreadedComponent::stopThread()) {
         throw CF::Resource::StopError(CF::CF_NOTSET, "Processing thread did not die");
     }
@@ -109,20 +105,11 @@ void FileWriter_base::releaseObject() throw (CORBA::SystemException, CF::LifeCyc
         // TODO - this should probably be logged instead of ignored
     }
 
-    Resource_impl::releaseObject();
+    Component::releaseObject();
 }
 
 void FileWriter_base::loadProperties()
 {
-    addProperty(debug_output,
-                false,
-                "debug_output",
-                "debug_output",
-                "readwrite",
-                "",
-                "external",
-                "configure");
-
     addProperty(destination_uri,
                 "sca:///data/%STREAMID%.%TIMESTAMP%.%MODE%.%SR%.%DT%",
                 "destination_uri",
@@ -185,6 +172,15 @@ void FileWriter_base::loadProperties()
                 "",
                 "external",
                 "message");
+
+    addProperty(component_status,
+                component_status_struct(),
+                "component_status",
+                "component_status",
+                "readonly",
+                "",
+                "external",
+                "configure");
 
     addProperty(recording_timer,
                 "recording_timer",

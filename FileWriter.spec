@@ -29,7 +29,7 @@ Prefix:         %{_prefix}
 %define _infodir       %{_prefix}/info
 
 Name:           FileWriter
-Version:        3.0.0
+Version:        4.0.0
 Release:        1%{?dist}
 Summary:        Component %{name}
 
@@ -38,18 +38,19 @@ License:        None
 Source0:        %{name}-%{version}.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
-BuildRequires:  redhawk-devel >= 1.10.0
-Requires:       redhawk >= 1.10.0
+BuildRequires:  redhawk-devel >= 1.11
+Requires:       redhawk >= 1.11
 
 # Interface requirements
-BuildRequires:  bulkioInterfaces >= 1.10
-Requires:       bulkioInterfaces >= 1.10
+BuildRequires:  bulkioInterfaces >= 1.11
+Requires:       bulkioInterfaces >= 1.11
 
 BuildRequires:  RedhawkDevUtils_v1-devel >= 3.0.0
 Requires:       RedhawkDevUtils_v1 >= 3.0.0
 
-Requires: iolib
-BuildRequires: iolib
+BuildRequires:  blueFileLib_v1-devel >= 1.0.0
+Requires:       blueFileLib_v1 >= 1.0.0
+
 
 %description
 Component %{name}

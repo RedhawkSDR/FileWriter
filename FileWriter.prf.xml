@@ -20,12 +20,6 @@
 -->
 <!DOCTYPE properties PUBLIC "-//JTRS//DTD SCA V2.2.2 PRF//EN" "properties.dtd">
 <properties>
-  <simple id="debug_output" mode="readwrite" name="debug_output" type="boolean">
-    <description>This will enable additional debug output.</description>
-    <value>false</value>
-    <kind kindtype="configure"/>
-    <action type="external"/>
-  </simple>
   <simple id="destination_uri" mode="readwrite" name="destination_uri" type="string">
     <description>The path to the file to be written.
 
@@ -66,6 +60,12 @@ sca:// 	SCA Filesystem (path relative to SDRROOT/dom)</description>
   </simple>
   <struct id="advanced_properties" mode="readwrite" name="advanced_properties">
     <description>Properties to alter advanced behavior.</description>
+    <simple id="debug_output" mode="readwrite" name="debug_output" type="boolean">
+      <description>This will enable additional debug output.</description>
+      <value>false</value>
+      <kind kindtype="configure"/>
+      <action type="external"/>
+    </simple>
     <simple id="advanced_properties::force_flush" mode="readwrite" name="force_flush" type="boolean">
       <description>When enabled, force a buffer (file) flush on every incoming packet.</description>
       <value>false</value>
@@ -190,5 +190,12 @@ GB (1024^3 Bytes)</description>
       <description>The message can indicate a filename to be associated with the event.</description>
     </simple>
     <configurationkind kindtype="message"/>
+  </struct>
+  <struct id="component_status" mode="readonly" name="component_status">
+    <simple id="domain_name" name="domain_name" type="string">
+      <description>Name of the domain in which this component exists. &quot;(domainless)&quot; is reported if no domain can be found.</description>
+      <value>(domainless)</value>
+    </simple>
+    <configurationkind kindtype="configure"/>
   </struct>
 </properties>

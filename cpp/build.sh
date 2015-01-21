@@ -17,20 +17,18 @@
 # program.  If not, see http://www.gnu.org/licenses/.
 #
 
-configure='configure'
-makefile_in='Makefile.in'
-config_ac='configure.ac'
-make_am='Makefile.am'
-makefile='Makefile'
+# Create the Makefile if necessary
+if [ ! -e Makefile ]; then
+  ./reconf
+  ./configure
+fi
 
-if [ "$1" == 'clean' ]; then
-  make clean
+if [ $# == 1 ]; then
+    if [ $1 == 'clean' ]; then
+        make distclean
+    else
+        make -j $*
+    fi
 else
-  # Checks if build is newer than makefile (based on modification time)
-  if [[ ! -e $configure || ! -e $makefile_in || $config_ac -nt $makefile || $make_am -nt $makefile ]]; then
-    ./reconf
-    ./configure
-  fi
-  make
-  exit 0
+    make -j $*
 fi
