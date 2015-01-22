@@ -55,11 +55,19 @@ FileWriter_i::~FileWriter_i() {
 void FileWriter_i::initialize() throw (CF::LifeCycle::InitializeError, CORBA::SystemException) {
     FileWriter_base::initialize();
     try {
-        CF::DomainManager_var dm = FILE_WRITER_DOMAIN_MGR_HELPERS::domainManager_id_to_var(DomainManager_out->identifier());
-        filesystem->update_sca_file_manager(dm->fileMgr());
-
+        if(!filesystem->is_sca_file_manager_valid()){
+			CF::DomainManager_var dm = CF::DomainManager::_nil();
+			if (getDomainManager() && !CORBA::is_nil(getDomainManager()->getRef())) {
+				std::string dom_id = ossie::corba::returnString(getDomainManager()->getRef()->identifier());
+				dm = FILE_WRITER_DOMAIN_MGR_HELPERS::domainManager_id_to_var(dom_id);
+			}
+		    filesystem->update_sca_file_manager(dm->fileMgr());
+        	component_status.domain_name = ossie::corba::returnString(dm->name());
+        }
     } catch (...) {
-    }
+    	LOG_DEBUG(FileWriter_i,"Exception caught while attempting to update sca file manager");
+    	//component_status.domain_name = "(domainless)"; // leave as default value
+    };
 }
 
 void FileWriter_i::start() throw (CF::Resource::StartError, CORBA::SystemException) {
@@ -114,9 +122,18 @@ void FileWriter_i::change_uri() {
         prefix = ABSTRACTED_FILE_IO::sca_uri_prefix;
         //do{
         try {
-            CF::DomainManager_var dm = FILE_WRITER_DOMAIN_MGR_HELPERS::domainManager_id_to_var(DomainManager_out->identifier());
-            filesystem->update_sca_file_manager(dm->fileMgr());
+            if(!filesystem->is_sca_file_manager_valid()){
+    			CF::DomainManager_var dm = CF::DomainManager::_nil();
+    			if (getDomainManager() && !CORBA::is_nil(getDomainManager()->getRef())) {
+    				std::string dom_id = ossie::corba::returnString(getDomainManager()->getRef()->identifier());
+    				dm = FILE_WRITER_DOMAIN_MGR_HELPERS::domainManager_id_to_var(dom_id);
+    			}
+    		    filesystem->update_sca_file_manager(dm->fileMgr());
+            	component_status.domain_name = ossie::corba::returnString(dm->name());
+            }
         } catch (...) {
+        	LOG_DEBUG(FileWriter_i,"Exception caught while attempting to update sca file manager");
+        	//component_status.domain_name = "(domainless)"; // leave as default value
             LOG_WARN(FileWriter_i, "Error: can not determine domain!\n");
             LOG_WARN(FileWriter_i, "Defaulting to local $SDRROOT filesystem");       
             char* sdr_env = getenv("SDRROOT");
