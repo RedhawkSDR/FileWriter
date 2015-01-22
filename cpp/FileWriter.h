@@ -65,7 +65,7 @@ class FileWriter_i;
 #define METADATA_EXTENSION ".metadata.xml"
 #define BLUEFILE_BLOCK_SIZE 512   // Exact size of fixed header
 
-namespace FILE_READER_DOMAIN_MGR_HELPERS {
+namespace FILE_WRITER_DOMAIN_MGR_HELPERS {
 
 	inline CF::DomainManager_var domainManager_id_to_var(std::string id) {
 		CF::DomainManager_var domainMgr_var = CF::DomainManager::_nil();

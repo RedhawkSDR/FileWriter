@@ -55,7 +55,7 @@ FileWriter_i::~FileWriter_i() {
 void FileWriter_i::initialize() throw (CF::LifeCycle::InitializeError, CORBA::SystemException) {
     FileWriter_base::initialize();
     try {
-        CF::DomainManager_var dm = FILE_READER_DOMAIN_MGR_HELPERS::domainManager_id_to_var(DomainManager_out->identifier());
+        CF::DomainManager_var dm = FILE_WRITER_DOMAIN_MGR_HELPERS::domainManager_id_to_var(DomainManager_out->identifier());
         filesystem->update_sca_file_manager(dm->fileMgr());
 
     } catch (...) {
@@ -114,7 +114,7 @@ void FileWriter_i::change_uri() {
         prefix = ABSTRACTED_FILE_IO::sca_uri_prefix;
         //do{
         try {
-            CF::DomainManager_var dm = FILE_READER_DOMAIN_MGR_HELPERS::domainManager_id_to_var(DomainManager_out->identifier());
+            CF::DomainManager_var dm = FILE_WRITER_DOMAIN_MGR_HELPERS::domainManager_id_to_var(DomainManager_out->identifier());
             filesystem->update_sca_file_manager(dm->fileMgr());
         } catch (...) {
             LOG_WARN(FileWriter_i, "Error: can not determine domain!\n");
