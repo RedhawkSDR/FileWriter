@@ -496,7 +496,7 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
                         throw std::logic_error("ERROR OPENING FILE: " + curFileDescIter->second.in_process_uri_filename);
                     }
 
-                    if (debug_output)
+                    if (advanced_properties.debug_output)
                         std::cout << "DEBUG (" << __PRETTY_FUNCTION__ << "): OPENED STREAM: " << packet->streamID
                             << " (" << stream_id << ") " << " OR FILE (TMP): " << fs.in_process_uri_filename
                             << " OR FILE (TMP): " << fs.uri_filename << std::endl;
@@ -568,7 +568,7 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
             }
 
             // Output Data To File
-            if (debug_output)
+            if (advanced_properties.debug_output)
                 std::cout << "DEBUG (" << __PRETTY_FUNCTION__ << "): WRITING: " << write_bytes << " BYTES TO FILE: " << curFileDescIter->second.in_process_uri_filename << std::endl;
             filesystem->write(curFileDescIter->second.in_process_uri_filename, (char*) &packet->dataBuffer[0] + packet_pos, write_bytes, advanced_properties.force_flush);
             curFileDescIter->second.file_size_internal += write_bytes;
@@ -651,7 +651,7 @@ bool FileWriter_i::close_file(const std::string& filename, const BULKIO::Precisi
             }
         }
 
-        if (debug_output)
+        if (advanced_properties.debug_output)
         	std::cout << "DEBUG (" << __PRETTY_FUNCTION__ << "): CLOSED FILE: " << curFileDescIter->second.uri_filename << std::endl;
         LOG_INFO(FileWriter_i, "CLOSED FILE: " << curFileDescIter->second.uri_filename );
 
