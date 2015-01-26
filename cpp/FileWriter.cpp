@@ -485,7 +485,7 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
                     double curTime = packet->T.toff + packet->T.twsec + packet->T.tfsec;
                     file_struct fs(destination_filename, current_writer_type, curTime, advanced_properties.enable_metadata_file, advanced_properties.use_hidden_files, advanced_properties.open_file_extension, advanced_properties.open_metadata_file_extension, stream_id);
                     curFileDescIter = file_to_struct_mapping.insert(std::make_pair(destination_filename, fs)).first;
-                    curFileDescIter->second.file_size_internal = filesystem->file_size(destination_filename);
+                    curFileDescIter->second.file_size_internal = filesystem->file_size(curFileDescIter->second.in_process_uri_filename);
 
                     bool open_success = filesystem->open_file(curFileDescIter->second.in_process_uri_filename, true, append);
                     if (curFileDescIter->second.metdata_file_enabled())
@@ -515,8 +515,8 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
                     }
 
                     // BLUEFILE
-                    size_t pos = filesystem->file_tell(curFileDescIter->second.in_process_uri_filename);
                     if (curFileDescIter->second.file_type == BLUEFILE) {
+                        size_t pos = filesystem->file_tell(curFileDescIter->second.in_process_uri_filename);
                         curFileDescIter->second.lastSRI = packet->SRI;
                         curFileDescIter->second.midas_type = midas_type<PACKET_ELEMENT_TYPE > ((curFileDescIter->second.lastSRI.mode == 0));
                         if (pos == 0) {
