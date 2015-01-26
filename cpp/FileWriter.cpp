@@ -656,10 +656,11 @@ bool FileWriter_i::close_file(const std::string& filename, const BULKIO::Precisi
         	std::cout << "DEBUG (" << __PRETTY_FUNCTION__ << "): CLOSED FILE: " << curFileDescIter->second.uri_filename << std::endl;
         LOG_INFO(FileWriter_i, "CLOSED FILE: " << curFileDescIter->second.uri_filename );
 
-        file_io_message_struct file_event = create_file_io_message("CLOSE", stream_id, filesystem->uri_to_file(curFileDescIter->second.uri_filename));
+        std::string sca_filename = filesystem->uri_to_file(curFileDescIter->second.uri_filename);
+        file_io_message_struct file_event = create_file_io_message("CLOSE", stream_id, sca_filename);
 		BULKIO::PrecisionUTCTime tstamp = bulkio::time::utils::now();
 		MessageEvent_out->sendMessage(file_event);
-		dataFile_out->pushPacket(curFileDescIter->second.uri_filename.c_str(), tstamp, true, stream_id.c_str());
+		dataFile_out->pushPacket(sca_filename.c_str(), tstamp, true, stream_id.c_str());
 
 		file_to_struct_mapping.erase(curFileDescIter);
 		curFileDescIter = file_to_struct_mapping.end();
