@@ -450,7 +450,8 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
         try {
 
             // Is File New
-            if (destination_filename.empty()) {
+        	bool new_file = destination_filename.empty();
+            if (new_file) {
                 std::string basename = stream_to_basename(stream_id, packet->SRI, packet->T, file_format, dt);
                 destination_filename = prop_dirname + basename;
                 bool append = false;
@@ -576,7 +577,7 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
             packet_pos += write_bytes;
 
 
-            if (packet->sriChanged) {
+            if (packet->sriChanged || new_file) {
                 curFileDescIter->second.lastSRI = packet->SRI;
                 curFileDescIter->second.midas_type = midas_type<PACKET_ELEMENT_TYPE > ((curFileDescIter->second.lastSRI.mode == 0));
                 packet->SRI.streamID = stream_id.c_str();
