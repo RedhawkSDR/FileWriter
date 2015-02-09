@@ -113,6 +113,7 @@ void FileWriter_base::loadProperties()
                 "configure");
 
     addProperty(destination_uri_suffix,
+                "",
                 "destination_uri_suffix",
                 "destination_uri_suffix",
                 "readwrite",

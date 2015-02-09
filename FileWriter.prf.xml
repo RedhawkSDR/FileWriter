@@ -18,6 +18,7 @@ sca:// 	SCA Filesystem (path relative to SDRROOT/dom)
   </simple>
   <simple id="destination_uri_suffix" mode="readwrite" name="destination_uri_suffix" type="string">
     <description>Will be appended to the destination_uri</description>
+    <value></value>
     <kind kindtype="configure"/>
     <action type="external"/>
   </simple>
