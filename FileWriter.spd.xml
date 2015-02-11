@@ -1,9 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+ This file is protected by Copyright. Please refer to the COPYRIGHT file
+ distributed with this source distribution.
+ 
+ This file is part of REDHAWK Basic Components FileWriter.
+ 
+ REDHAWK Basic Components FileWriter is free software: you can redistribute it and/or modify it
+ under the terms of the GNU General Public License as published by the
+ Free Software Foundation, either version 3 of the License, or (at your
+ option) any later version.
+ 
+ REDHAWK Basic Components FileWriter is distributed in the hope that it will be useful, but WITHOUT
+ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ for more details.
+ 
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see http://www.gnu.org/licenses/.
+-->
 <!DOCTYPE softpkg PUBLIC "-//JTRS//DTD SCA V2.2.2 SPD//EN" "softpkg.dtd">
-<softpkg version="3.0.0" id="DCE:11e814bc-c631-400a-a48d-f0f153d5fa9e" name="FileWriter" type="sca_compliant">
-  <title/>
+<softpkg id="DCE:11e814bc-c631-400a-a48d-f0f153d5fa9e" name="FileWriter" type="sca_compliant" version="3.0.0">
+  <title></title>
   <author>
-    <name/>
+    <name></name>
   </author>
+  <description>This component takes in data from the provides ports and writes the data to a file.</description>
   <propertyfile type="PRF">
     <localfile name="FileWriter.prf.xml"/>
   </propertyfile>
