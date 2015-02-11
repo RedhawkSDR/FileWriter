@@ -261,7 +261,7 @@ private:
         else if (typeid(DATA_TYPE) == typeid(long long))
             format += "X";
         else if (typeid(DATA_TYPE) == typeid(float))
-            format += "D";
+            format += "F";
         else if (typeid(DATA_TYPE) == typeid(double))
             format += "D";
         else
