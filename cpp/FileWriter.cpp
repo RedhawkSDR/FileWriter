@@ -409,6 +409,12 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
         return true;
     }
 
+    // Check for state where we've reached our max file size (or time)
+    if (curFileIter != stream_to_file_mapping.end() && curFileDescIter == file_to_struct_mapping.end()){
+        delete packet;
+        return true;
+    }
+
 
     // RECORDING TIMER
     while (timer_set_iter != timer_set.end()) {
@@ -581,12 +587,15 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
                 if (avail_in_file <= write_bytes) {
                     write_bytes = avail_in_file;
                     reached_max_size = true;
+                    LOG_DEBUG(FileWriter_i, "Reached max file size: write_bytes="<<write_bytes);
                 }
             }
 
             // Output Data To File
-            if (advanced_properties.debug_output)
+            if (debug_output) {
                 std::cout << "DEBUG (" << __PRETTY_FUNCTION__ << "): WRITING: " << write_bytes << " BYTES TO FILE: " << curFileDescIter->second.in_process_uri_filename << std::endl;
+                LOG_DEBUG(FileWriter_i,"WRITING: " << write_bytes << " BYTES TO FILE: " << curFileDescIter->second.in_process_uri_filename );
+            }
             filesystem->write(curFileDescIter->second.in_process_uri_filename, (char*) &packet->dataBuffer[0] + packet_pos, write_bytes, advanced_properties.force_flush);
             curFileDescIter->second.file_size_internal += write_bytes;
             packet_pos += write_bytes;
@@ -605,21 +614,28 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
 
             // Close File
             if (eos || reached_max_size) {
-                LOG_TRACE(FileWriter_i, " *** PROCESSING EOS FOR STREAM ID : " << stream_id);
+                LOG_DEBUG(FileWriter_i, " *** PROCESSING EOS FOR STREAM ID : " << stream_id);
                 if (eos && curFileDescIter->second.metdata_file_enabled()) {
                     std::string metadata = eos_to_XMLstring(packet->SRI);
                     filesystem->write(curFileDescIter->second.in_process_uri_metadata_filename, &metadata, advanced_properties.force_flush);
                 }
                 close_file(destination_filename, packet->T, stream_id);
                 if (reached_max_size && advanced_properties.reset_on_max_file) {
+                    LOG_DEBUG(FileWriter_i, "Reseting on max file size...");
                     stream_to_file_mapping.erase(stream_id);
+                    curFileIter = stream_to_file_mapping.end();
+                    destination_filename.clear();
+                } else if (reached_max_size){
+                    LOG_DEBUG(FileWriter_i, "Not reseting on max file size...");
+                    break;
                 }
             }
         }
         catch (const std::logic_error & error) {
-            LOG_TRACE(FileWriter_i, error.what());
+            LOG_DEBUG(FileWriter_i, error.what());
         }
         catch (...) {
+            LOG_DEBUG(FileWriter_i, "Caught unknown exception in service function loop");
             break;
         };
     } while (packet_pos < packet->dataBuffer.size() * sizeof (packet->dataBuffer[0]));
