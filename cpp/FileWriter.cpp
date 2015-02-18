@@ -78,7 +78,7 @@ void FileWriter_i::start() throw (CF::Resource::StartError, CORBA::SystemExcepti
     catch(...){
         LOG_WARN(FileWriter_i, "No Domain was found, preceeding with local filesystem");
     }
-     */       
+     */
 }
 
 void FileWriter_i::stop() throw (CF::Resource::StopError, CORBA::SystemException) {
@@ -135,7 +135,7 @@ void FileWriter_i::change_uri() {
         	LOG_DEBUG(FileWriter_i,"Exception caught while attempting to update sca file manager");
         	//component_status.domain_name = "(domainless)"; // leave as default value
             LOG_WARN(FileWriter_i, "Error: can not determine domain!\n");
-            LOG_WARN(FileWriter_i, "Defaulting to local $SDRROOT filesystem");       
+            LOG_WARN(FileWriter_i, "Defaulting to local $SDRROOT filesystem");
             char* sdr_env = getenv("SDRROOT");
             std::string sdr_root(sdr_env);
             if (sdr_env == NULL) {
@@ -156,15 +156,15 @@ void FileWriter_i::change_uri() {
     prop_basename = base;
     prop_full_filename = prop_dirname + base;
     if (!filesystem->exists(prop_dirname)) {
-    
+
         if (!advanced_properties.create_destination_dir) {
-    
+
             LOG_ERROR(FileWriter_i, "Error: destination directory does not exist!\n");
             throw CF::PropertySet::InvalidConfiguration(); //"Error: destination directory does not exist!");
         }
-    
+
     if (!filesystem->make_dir(prop_dirname)) {
-    
+
         LOG_ERROR(FileWriter_i, "Error: could not create destination directory!\n");
             throw CF::PropertySet::InvalidConfiguration(); //"Error: could not create destination directory!",advanced_properties);
         }
@@ -191,10 +191,10 @@ void FileWriter_i::advanced_propertiesChanged(const advanced_properties_struct *
 void FileWriter_i::recording_timerChanged(const std::vector<timer_struct_struct> *oldValue, const std::vector<timer_struct_struct> *newValue) {
     exclusive_lock lock(service_thread_lock);
     timer_set.clear();
-    
+
     for (unsigned int i=0; i<newValue->size(); ++i){
         if (newValue->at(i) != oldValue->at(i)){
-        
+
         	if (newValue->at(i).recording_enable){
         		BULKIO::PrecisionUTCTime timer_element;
         		//modified the interpretation of tcmode and tcstatus
@@ -219,7 +219,7 @@ void FileWriter_i::recording_timerChanged(const std::vector<timer_struct_struct>
         the previous call was NORMAL.
         If the return value for the previous call was NOOP, then the serviceThread waits
         an amount of time defined in the serviceThread's constructor.
-        
+
     SRI:
         To create a StreamSRI object, use the following code:
                 std::string stream_id = "testStream";
@@ -229,7 +229,7 @@ void FileWriter_i::recording_timerChanged(const std::vector<timer_struct_struct>
             To create a PrecisionUTCTime object, use the following code:
                 BULKIO::PrecisionUTCTime tstamp = bulkio::time::utils::now();
 
-        
+
     Ports:
 
         Data is passed to the serviceFunction through the getPacket call (BULKIO only).
@@ -244,10 +244,10 @@ void FileWriter_i::recording_timerChanged(const std::vector<timer_struct_struct>
         Each received dataTransfer is owned by serviceFunction and *MUST* be
         explicitly deallocated.
 
-        To send data using a BULKIO interface, a convenience interface has been added 
+        To send data using a BULKIO interface, a convenience interface has been added
         that takes a std::vector as the data input
 
-        NOTE: If you have a BULKIO dataSDDS port, you must manually call 
+        NOTE: If you have a BULKIO dataSDDS port, you must manually call
               "port->updateStats()" to update the port statistics when appropriate.
 
         Example:
@@ -290,7 +290,7 @@ void FileWriter_i::recording_timerChanged(const std::vector<timer_struct_struct>
         Interactions with non-BULKIO ports are left up to the component developer's discretion
 
     Properties:
-        
+
         Properties are accessed directly as member variables. For example, if the
         property name is "baudRate", it may be accessed within member functions as
         "baudRate". Unnamed properties are given a generated name of the form
@@ -298,26 +298,26 @@ void FileWriter_i::recording_timerChanged(const std::vector<timer_struct_struct>
         Property types are mapped to the nearest C++ type, (e.g. "string" becomes
         "std::string"). All generated properties are declared in the base class
         (FileWriter_base).
-    
+
         Simple sequence properties are mapped to "std::vector" of the simple type.
         Struct properties, if used, are mapped to C++ structs defined in the
         generated file "struct_props.h". Field names are taken from the name in
         the properties file; if no name is given, a generated name of the form
         "field_n" is used, where "n" is the ordinal number of the field.
-        
+
         Example:
             // This example makes use of the following Properties:
             //  - A float value called scaleValue
             //  - A boolean called scaleInput
-              
+
             if (scaleInput) {
                 dataOut[i] = dataIn[i] * scaleValue;
             } else {
                 dataOut[i] = dataIn[i];
             }
-            
+
         Callback methods can be associated with a property so that the methods are
-        called each time the property value changes.  This is done by calling 
+        called each time the property value changes.  This is done by calling
         addPropertyChangeListener(<property name>, this, &FileWriter_i::<callback method>)
         in the constructor.
 
@@ -327,7 +327,7 @@ void FileWriter_i::recording_timerChanged(const std::vector<timer_struct_struct>
         Example:
             // This example makes use of the following Properties:
             //  - A float value called scaleValue
-            
+
         //Add to FileWriter.cpp
         FileWriter_i::FileWriter_i(const char *uuid, const char *label) :
             FileWriter_base(uuid, label)
@@ -340,11 +340,11 @@ void FileWriter_i::recording_timerChanged(const std::vector<timer_struct_struct>
             std::cout << "scaleValue changed from" << *oldValue << " to " << *newValue
                       << std::endl;
         }
-            
+
         //Add to FileWriter.h
         void scaleChanged(const float* oldValue, const float* newValue);
-        
-        
+
+
  ************************************************************************************************/
 int FileWriter_i::serviceFunction() {
     exclusive_lock lock(service_thread_lock);
@@ -450,7 +450,7 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
             stream_to_file_mapping.erase(stream_id);
         }
     }
-    
+
     // BYTE SWAP
     if (swap_bytes) {
         if (dt.find("16") != std::string::npos) {
@@ -592,7 +592,7 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
             }
 
             // Output Data To File
-            if (debug_output) {
+            if (advanced_properties.debug_output) {
                 std::cout << "DEBUG (" << __PRETTY_FUNCTION__ << "): WRITING: " << write_bytes << " BYTES TO FILE: " << curFileDescIter->second.in_process_uri_filename << std::endl;
                 LOG_DEBUG(FileWriter_i,"WRITING: " << write_bytes << " BYTES TO FILE: " << curFileDescIter->second.in_process_uri_filename );
             }
