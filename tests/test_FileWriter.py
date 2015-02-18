@@ -343,17 +343,24 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         try:
             self.assertEqual(filecmp.cmp(dataFileIn, dataFileOut), True)
         except self.failureException as e:
+            # unpacked bytes may be NaN, which could cause test to fail unnecessarily
+            size = os.path.getsize(dataFileOut)
+            with open (dataFileOut, 'rb') as dataOut:
+                data2 = list(struct.unpack('f' * (size/4), dataOut.read(size)))
+            for a,b in zip(data,data2):
+                if a!=b:
+                    if a!=a and b!=b:
+                        print "Difference in NaN format, ignoring..."
+                    else:
+                        print "FAILED:",a,"!=",b
+                        raise e
+
+        #Release the components and remove the generated files
+        finally:
             comp.releaseObject()
             source.releaseObject()
             os.remove(dataFileIn)
             os.remove(dataFileOut)
-            raise e
-
-        #Release the components and remove the generated files
-        comp.releaseObject()
-        source.releaseObject()
-        os.remove(dataFileIn)
-        os.remove(dataFileOut)
         
         print "........ PASSED\n"
         return
