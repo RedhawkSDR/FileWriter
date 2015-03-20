@@ -531,7 +531,7 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
 
                     // BLUEFILE
                     if (curFileDescIter->second.file_type == BLUEFILE) {
-                        size_t pos = filesystem->file_tell(curFileDescIter->second.in_process_uri_filename);
+                        size_t pos = filesystem.file_tell(curFileDescIter->second.in_process_uri_filename);
                         curFileDescIter->second.lastSRI = packet->SRI;
                         curFileDescIter->second.midas_type = midas_type<PACKET_ELEMENT_TYPE > ((curFileDescIter->second.lastSRI.mode == 0));
                         if (pos == 0) {
