@@ -93,7 +93,7 @@ enum FILE_TYPES{
     BLUEFILE = 1
 };
 struct file_struct{
-	file_struct(std::string uri_full_filename, FILE_TYPES type, double start_time, bool enable_metadata, bool hidden_tmp_files,
+	file_struct(std::string uri_full_filename, FILE_TYPES type, double start_tyme, bool enable_metadata, bool hidden_tmp_files,
 				const std::string& open_file_extension, const std::string& open_metadata_file_extension, const std::string& file_stream_id)
 	{
 		uri_filename = uri_full_filename;
@@ -103,7 +103,7 @@ struct file_struct{
         file_size_internal = 0;
         num_writers = 1;
         file_type = type;
-        start_time = start_time;
+        start_time = start_tyme;
         stream_id = file_stream_id;
         midas_type = "";
 
