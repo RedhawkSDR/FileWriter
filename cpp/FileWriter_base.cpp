@@ -37,23 +37,23 @@ FileWriter_base::FileWriter_base(const char *uuid, const char *label) :
     loadProperties();
 
     dataChar_in = new bulkio::InCharPort("dataChar_in");
-    addPort("dataChar_in", dataChar_in);
+    addPort("dataChar_in", "Char input port for data. ", dataChar_in);
     dataOctet_in = new bulkio::InOctetPort("dataOctet_in");
-    addPort("dataOctet_in", dataOctet_in);
+    addPort("dataOctet_in", "Octet input port for data. ", dataOctet_in);
     dataShort_in = new bulkio::InShortPort("dataShort_in");
-    addPort("dataShort_in", dataShort_in);
+    addPort("dataShort_in", "Short input port for data. ", dataShort_in);
     dataUshort_in = new bulkio::InUShortPort("dataUshort_in");
-    addPort("dataUshort_in", dataUshort_in);
+    addPort("dataUshort_in", "Unsigned short input port for data. ", dataUshort_in);
     dataFloat_in = new bulkio::InFloatPort("dataFloat_in");
-    addPort("dataFloat_in", dataFloat_in);
+    addPort("dataFloat_in", "Float input port for data. ", dataFloat_in);
     dataDouble_in = new bulkio::InDoublePort("dataDouble_in");
-    addPort("dataDouble_in", dataDouble_in);
+    addPort("dataDouble_in", "Double input port for data. ", dataDouble_in);
     dataXML_in = new bulkio::InXMLPort("dataXML_in");
-    addPort("dataXML_in", dataXML_in);
+    addPort("dataXML_in", "XML input port for data. ", dataXML_in);
     MessageEvent_out = new MessageSupplierPort("MessageEvent_out");
-    addPort("MessageEvent_out", MessageEvent_out);
+    addPort("MessageEvent_out", "MessageEvent output port. Messages sent for the opening and closing of files. ", MessageEvent_out);
     dataFile_out = new bulkio::OutFilePort("dataFile_out");
-    addPort("dataFile_out", dataFile_out);
+    addPort("dataFile_out", "Output port that provided the file URL for writen file. ", dataFile_out);
 }
 
 FileWriter_base::~FileWriter_base()

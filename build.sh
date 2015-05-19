@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # This file is protected by Copyright. Please refer to the COPYRIGHT file distributed with this 
 # source distribution.
@@ -36,6 +36,8 @@ else
         if [ -e build.sh ]; then
             if [ $# == 1 ]; then
                 if [ $1 == 'clean' ]; then
+                    rm -f Makefile
+                    rm -f config.*
                     ./build.sh distclean
                 else
                     ./build.sh $*
@@ -43,6 +45,8 @@ else
             else
                 ./build.sh $*
             fi
+        elif [ -e Makefile ]; then
+            make $*
         elif [ -e reconf ]; then
             ./reconf && ./configure && make $*
         else

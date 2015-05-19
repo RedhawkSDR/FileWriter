@@ -18,8 +18,8 @@
  * along with this program.  If not, see http://www.gnu.org/licenses/.
  */
 
-#ifndef FILEWRITER_IMPL_BASE_H
-#define FILEWRITER_IMPL_BASE_H
+#ifndef FILEWRITER_BASE_IMPL_BASE_H
+#define FILEWRITER_BASE_IMPL_BASE_H
 
 #include <boost/thread.hpp>
 #include <ossie/Component.h>
@@ -68,4 +68,4 @@ class FileWriter_base : public Component, protected ThreadedComponent
 
     private:
 };
-#endif // FILEWRITER_IMPL_BASE_H
+#endif // FILEWRITER_BASE_IMPL_BASE_H
