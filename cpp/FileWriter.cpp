@@ -127,8 +127,7 @@ void FileWriter_i::change_uri() {
         } catch (...) {
         	LOG_DEBUG(FileWriter_i,"Exception caught while attempting to update sca file manager");
         	//component_status.domain_name = "(domainless)"; // leave as default value
-            LOG_WARN(FileWriter_i, "Error: can not determine domain!\n");
-            LOG_WARN(FileWriter_i, "Defaulting to local $SDRROOT filesystem");
+            LOG_INFO(FileWriter_i, "Cannot determine domain, defaulting to local $SDRROOT filesystem");
             char* sdr_env = getenv("SDRROOT");
             std::string sdr_root(sdr_env);
             if (sdr_env == NULL) {
@@ -516,7 +515,7 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
                         std::cout << "DEBUG (" << __PRETTY_FUNCTION__ << "): OPENED STREAM: " << packet->streamID
                             << " (" << stream_id << ") " << " OR FILE (TMP): " << fs.in_process_uri_filename
                             << " OR FILE (TMP): " << fs.uri_filename << std::endl;
-                    LOG_INFO(FileWriter_i, " OPENED STREAM: " << packet->streamID << " (" << stream_id << ") " << " OR FILE (TMP): " << fs.in_process_uri_filename << " OR FILE (TMP): " << fs.uri_filename);
+                    LOG_INFO(FileWriter_i, "OPENED STREAM: " << packet->streamID << " (" << stream_id << ") " << " OR FILE (TMP): " << fs.in_process_uri_filename << " OR FILE (TMP): " << fs.uri_filename);
 
                     file_io_message_struct file_event = create_file_io_message("OPEN", stream_id, filesystem.uri_to_file(fs.in_process_uri_filename));
                     MessageEvent_out->sendMessage(file_event);
