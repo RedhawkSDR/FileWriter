@@ -70,8 +70,8 @@ inline bool operator>>= (const CORBA::Any& a, advanced_properties_struct& s) {
     CF::Properties* temp;
     if (!(a >>= temp)) return false;
     const redhawk::PropertyMap& props = redhawk::PropertyMap::cast(*temp);
-    if (props.contains("debug_output")) {
-        if (!(props["debug_output"] >>= s.debug_output)) return false;
+    if (props.contains("advanced_properties::debug_output")) {
+        if (!(props["advanced_properties::debug_output"] >>= s.debug_output)) return false;
     }
     if (props.contains("advanced_properties::force_flush")) {
         if (!(props["advanced_properties::force_flush"] >>= s.force_flush)) return false;
@@ -112,7 +112,7 @@ inline bool operator>>= (const CORBA::Any& a, advanced_properties_struct& s) {
 inline void operator<<= (CORBA::Any& a, const advanced_properties_struct& s) {
     redhawk::PropertyMap props;
  
-    props["debug_output"] = s.debug_output;
+    props["advanced_properties::debug_output"] = s.debug_output;
  
     props["advanced_properties::force_flush"] = s.force_flush;
  
@@ -243,8 +243,8 @@ inline bool operator>>= (const CORBA::Any& a, component_status_struct& s) {
     CF::Properties* temp;
     if (!(a >>= temp)) return false;
     const redhawk::PropertyMap& props = redhawk::PropertyMap::cast(*temp);
-    if (props.contains("domain_name")) {
-        if (!(props["domain_name"] >>= s.domain_name)) return false;
+    if (props.contains("component_status::domain_name")) {
+        if (!(props["component_status::domain_name"] >>= s.domain_name)) return false;
     }
     return true;
 }
@@ -252,7 +252,7 @@ inline bool operator>>= (const CORBA::Any& a, component_status_struct& s) {
 inline void operator<<= (CORBA::Any& a, const component_status_struct& s) {
     redhawk::PropertyMap props;
  
-    props["domain_name"] = s.domain_name;
+    props["component_status::domain_name"] = s.domain_name;
     a <<= props;
 }
 
@@ -289,17 +289,17 @@ inline bool operator>>= (const CORBA::Any& a, timer_struct_struct& s) {
     CF::Properties* temp;
     if (!(a >>= temp)) return false;
     const redhawk::PropertyMap& props = redhawk::PropertyMap::cast(*temp);
-    if (props.contains("recording_timer::timer_struct::recording_enable")) {
-        if (!(props["recording_timer::timer_struct::recording_enable"] >>= s.recording_enable)) return false;
+    if (props.contains("recording_timer::recording_enable")) {
+        if (!(props["recording_timer::recording_enable"] >>= s.recording_enable)) return false;
     }
-    if (props.contains("recording_timer::timer_struct::use_pkt_timestamp")) {
-        if (!(props["recording_timer::timer_struct::use_pkt_timestamp"] >>= s.use_pkt_timestamp)) return false;
+    if (props.contains("recording_timer::use_pkt_timestamp")) {
+        if (!(props["recording_timer::use_pkt_timestamp"] >>= s.use_pkt_timestamp)) return false;
     }
-    if (props.contains("recording_timer::timer_struct::twsec")) {
-        if (!(props["recording_timer::timer_struct::twsec"] >>= s.twsec)) return false;
+    if (props.contains("recording_timer::twsec")) {
+        if (!(props["recording_timer::twsec"] >>= s.twsec)) return false;
     }
-    if (props.contains("recording_timer::timer_struct::tfsec")) {
-        if (!(props["recording_timer::timer_struct::tfsec"] >>= s.tfsec)) return false;
+    if (props.contains("recording_timer::tfsec")) {
+        if (!(props["recording_timer::tfsec"] >>= s.tfsec)) return false;
     }
     return true;
 }
@@ -307,13 +307,13 @@ inline bool operator>>= (const CORBA::Any& a, timer_struct_struct& s) {
 inline void operator<<= (CORBA::Any& a, const timer_struct_struct& s) {
     redhawk::PropertyMap props;
  
-    props["recording_timer::timer_struct::recording_enable"] = s.recording_enable;
+    props["recording_timer::recording_enable"] = s.recording_enable;
  
-    props["recording_timer::timer_struct::use_pkt_timestamp"] = s.use_pkt_timestamp;
+    props["recording_timer::use_pkt_timestamp"] = s.use_pkt_timestamp;
  
-    props["recording_timer::timer_struct::twsec"] = s.twsec;
+    props["recording_timer::twsec"] = s.twsec;
  
-    props["recording_timer::timer_struct::tfsec"] = s.tfsec;
+    props["recording_timer::tfsec"] = s.tfsec;
     a <<= props;
 }
 

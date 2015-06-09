@@ -60,7 +60,7 @@ sca:// 	SCA Filesystem (path relative to SDRROOT/dom)</description>
   </simple>
   <struct id="advanced_properties" mode="readwrite" name="advanced_properties">
     <description>Properties to alter advanced behavior.</description>
-    <simple id="debug_output" mode="readwrite" name="debug_output" type="boolean">
+    <simple id="advanced_properties::debug_output" mode="readwrite" name="debug_output" type="boolean">
       <description>This will enable additional debug output.</description>
       <value>false</value>
       <kind kindtype="configure"/>
@@ -145,25 +145,25 @@ GB (1024^3 Bytes)</description>
     <description>Provides the ability to enable/disable recordings based on a timestamp. This provides only approximate snaps. It starts recording on the packet following the enabled timestamps and quits recording on the first packet following the disabled timestamp. </description>
     <struct id="recording_timer::timer_struct" mode="readwrite" name="timer_struct">
       <description>The structure representing a timer.</description>
-      <simple id="recording_timer::timer_struct::recording_enable" mode="readwrite" name="recording_enable" type="boolean">
+      <simple id="recording_timer::recording_enable" mode="readwrite" name="recording_enable" type="boolean">
         <description>Control whether the timestamp dictates recording should begin or end.</description>
         <value>true</value>
         <kind kindtype="configure"/>
         <action type="external"/>
       </simple>
-      <simple id="recording_timer::timer_struct::use_pkt_timestamp" mode="readwrite" name="use_pkt_timestamp" type="boolean">
+      <simple id="recording_timer::use_pkt_timestamp" mode="readwrite" name="use_pkt_timestamp" type="boolean">
         <description>When enabled, use the timestamp receivied from the BULKIO packet.  When disabled, use the timestamp reported by the system.</description>
         <value>false</value>
         <kind kindtype="configure"/>
         <action type="external"/>
       </simple>
-      <simple id="recording_timer::timer_struct::twsec" mode="readwrite" name="twsec" type="double">
+      <simple id="recording_timer::twsec" mode="readwrite" name="twsec" type="double">
         <description>The whole second part of the timestamp.</description>
         <value>0</value>
         <kind kindtype="configure"/>
         <action type="external"/>
       </simple>
-      <simple id="recording_timer::timer_struct::tfsec" mode="readwrite" name="tfsec" type="double">
+      <simple id="recording_timer::tfsec" mode="readwrite" name="tfsec" type="double">
         <description>The fractional second part of the timestamp.</description>
         <value>0</value>
         <kind kindtype="configure"/>
@@ -192,7 +192,7 @@ GB (1024^3 Bytes)</description>
     <configurationkind kindtype="message"/>
   </struct>
   <struct id="component_status" mode="readonly" name="component_status">
-    <simple id="domain_name" name="domain_name" type="string">
+    <simple id="component_status::domain_name" name="domain_name" type="string">
       <description>Name of the domain in which this component exists. &quot;(domainless)&quot; is reported if no domain can be found.</description>
       <value>(domainless)</value>
     </simple>

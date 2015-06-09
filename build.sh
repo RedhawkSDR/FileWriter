@@ -45,7 +45,7 @@ else
             else
                 ./build.sh $*
             fi
-        elif [ -e Makefile ]; then
+        elif [ -e Makefile ] && [ Makefile.am -ot Makefile ]; then
             make $*
         elif [ -e reconf ]; then
             ./reconf && ./configure && make $*
