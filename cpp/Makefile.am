@@ -16,11 +16,11 @@
 # program.  If not, see http://www.gnu.org/licenses/.
 #
 
-ossieName = FileWriter
-bindir = $(prefix)/dom/components/FileWriter/cpp/
+ossieName = rh.FileWriter
+bindir = $(prefix)/dom/components/rh/FileWriter/cpp/
 bin_PROGRAMS = FileWriter
 
-xmldir = $(prefix)/dom/components/FileWriter/
+xmldir = $(prefix)/dom/components/rh/FileWriter/
 dist_xml_DATA = ../FileWriter.scd.xml ../FileWriter.prf.xml ../FileWriter.spd.xml
 ACLOCAL_AMFLAGS = -I$(OSSIEHOME)/share/aclocal/ossie
 

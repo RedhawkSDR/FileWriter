@@ -1,5 +1,4 @@
 .deps/
-.md5sums
 FileWriter
 FileWriter-FileWriter.o
 FileWriter-FileWriter_base.o

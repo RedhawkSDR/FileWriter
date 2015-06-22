@@ -16,7 +16,7 @@
 # program.  If not, see http://www.gnu.org/licenses/.
 #
 
-AC_INIT(FileWriter, 4.0.0)
+AC_INIT(rh.FileWriter, 4.0.0)
 AM_INIT_AUTOMAKE(nostdinc)
 
 AC_PROG_CC

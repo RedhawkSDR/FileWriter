@@ -19,12 +19,12 @@
 
 if [ "$1" = "rpm" ]; then
     # A very simplistic RPM build scenario
-    if [ -e FileWriter.spec ]; then
+    if [ -e rh.FileWriter.spec ]; then
         mydir=`dirname $0`
         tmpdir=`mktemp -d`
-        cp -r ${mydir} ${tmpdir}/FileWriter-4.0.0
-        tar czf ${tmpdir}/FileWriter-4.0.0.tar.gz --exclude=".svn" -C ${tmpdir} FileWriter-4.0.0
-        rpmbuild -ta ${tmpdir}/FileWriter-4.0.0.tar.gz
+        cp -r ${mydir} ${tmpdir}/rh.FileWriter-4.0.0
+        tar czf ${tmpdir}/rh.FileWriter-4.0.0.tar.gz --exclude=".svn" -C ${tmpdir} rh.FileWriter-4.0.0
+        rpmbuild -ta ${tmpdir}/rh.FileWriter-4.0.0.tar.gz
         rm -rf $tmpdir
     else
         echo "Missing RPM spec file in" `pwd`
