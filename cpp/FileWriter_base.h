@@ -35,6 +35,10 @@ class FileWriter_base : public Component, protected ThreadedComponent
         FileWriter_base(const char *uuid, const char *label);
         ~FileWriter_base();
 
+#ifdef BEGIN_AUTOCOMPLETE_IGNORE
+    /**
+     * \cond INTERNAL
+     */
         void start() throw (CF::Resource::StartError, CORBA::SystemException);
 
         void stop() throw (CF::Resource::StopError, CORBA::SystemException);
@@ -42,28 +46,50 @@ class FileWriter_base : public Component, protected ThreadedComponent
         void releaseObject() throw (CF::LifeCycle::ReleaseError, CORBA::SystemException);
 
         void loadProperties();
+    /**
+     * \endcond
+     */
+#endif
 
     protected:
         // Member variables exposed as properties
+        /// Property: destination_uri
         std::string destination_uri;
+        /// Property: destination_uri_suffix
         std::string destination_uri_suffix;
+        /// Property: file_format
         std::string file_format;
+        /// Property: swap_bytes
         bool swap_bytes;
+        /// Property: recording_enabled
         bool recording_enabled;
+        /// Property: advanced_properties
         advanced_properties_struct advanced_properties;
+        /// Message structure definition for file_io_message
         file_io_message_struct file_io_message;
+        /// Property: component_status
         component_status_struct component_status;
+        /// Property: recording_timer
         std::vector<timer_struct_struct> recording_timer;
 
         // Ports
+        /// Port: dataChar_in
         bulkio::InCharPort *dataChar_in;
+        /// Port: dataOctet_in
         bulkio::InOctetPort *dataOctet_in;
+        /// Port: dataShort_in
         bulkio::InShortPort *dataShort_in;
+        /// Port: dataUshort_in
         bulkio::InUShortPort *dataUshort_in;
+        /// Port: dataFloat_in
         bulkio::InFloatPort *dataFloat_in;
+        /// Port: dataDouble_in
         bulkio::InDoublePort *dataDouble_in;
+        /// Port: dataXML_in
         bulkio::InXMLPort *dataXML_in;
+        /// Port: MessageEvent_out
         MessageSupplierPort *MessageEvent_out;
+        /// Port: dataFile_out
         bulkio::OutFilePort *dataFile_out;
 
     private:

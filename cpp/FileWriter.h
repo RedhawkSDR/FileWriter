@@ -55,9 +55,9 @@
 #include <boost/thread/mutex.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
-#include <blue/HeaderControlBlock.h>
-#include <blue/ExtendedHeader.h>
-#include <blue/MidasKey.h>
+#include <HeaderControlBlock.h>
+#include <ExtendedHeader.h>
+#include <MidasKey.h>
 #include <abstracted_file_io.h>
 #include <byte_swap.h>
 class FileWriter_i;

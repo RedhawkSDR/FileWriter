@@ -27,13 +27,13 @@ URI accepted prefixes:
 file://	Local Filesystem
 sca:// 	SCA Filesystem (path relative to SDRROOT/dom)</description>
     <value>sca:///data/%STREAMID%.%TIMESTAMP%.%MODE%.%SR%.%DT%</value>
-    <kind kindtype="configure"/>
+    <kind kindtype="property"/>
     <action type="external"/>
   </simple>
   <simple id="destination_uri_suffix" mode="readwrite" name="destination_uri_suffix" type="string">
     <description>An optional prefix to be appended to the destination_uri.</description>
     <value></value>
-    <kind kindtype="configure"/>
+    <kind kindtype="property"/>
     <action type="external"/>
   </simple>
   <simple id="file_format" mode="readwrite" name="file_format" type="string">
@@ -43,19 +43,19 @@ sca:// 	SCA Filesystem (path relative to SDRROOT/dom)</description>
       <enumeration label="BLUE/PLATINUM FILE" value="BLUEFILE"/>
       <enumeration label="RAW (BULKIO)" value="RAW"/>
     </enumerations>
-    <kind kindtype="configure"/>
+    <kind kindtype="property"/>
     <action type="external"/>
   </simple>
   <simple id="swap_bytes" mode="readwrite" name="swap_bytes" type="boolean">
     <description>When true, the endianness of the data will be switched from the local machine's representation.  For example, on an x86 machine, the native endianness is little, so enabling this would cause big-endian data to be written.  However on an ARM machine, the native endianness can be either little or big, and the interpretation of this property could change.</description>
     <value>false</value>
-    <kind kindtype="configure"/>
+    <kind kindtype="property"/>
     <action type="external"/>
   </simple>
   <simple id="recording_enabled" mode="readwrite" name="recording_enabled" type="boolean">
     <description>When disabled, no data will be written to the specified file.</description>
     <value>true</value>
-    <kind kindtype="configure"/>
+    <kind kindtype="property"/>
     <action type="external"/>
   </simple>
   <struct id="advanced_properties" mode="readwrite" name="advanced_properties">
@@ -139,7 +139,7 @@ GB (1024^3 Bytes)</description>
       <description>An optional extension added to the URI basename of a metadata file being written to presently.</description>
       <value>inProgress</value>
     </simple>
-    <configurationkind kindtype="configure"/>
+    <configurationkind kindtype="property"/>
   </struct>
   <structsequence id="recording_timer" mode="readwrite" name="recording_timer">
     <description>Provides the ability to enable/disable recordings based on a timestamp. This provides only approximate snaps. It starts recording on the packet following the enabled timestamps and quits recording on the first packet following the disabled timestamp. </description>
@@ -171,7 +171,7 @@ GB (1024^3 Bytes)</description>
       </simple>
       <configurationkind kindtype="configure"/>
     </struct>
-    <configurationkind kindtype="configure"/>
+    <configurationkind kindtype="property"/>
   </structsequence>
   <struct id="file_io_message" mode="readwrite">
     <description>The structure representing a file IO message.</description>
@@ -196,6 +196,6 @@ GB (1024^3 Bytes)</description>
       <description>Name of the domain in which this component exists. &quot;(domainless)&quot; is reported if no domain can be found.</description>
       <value>(domainless)</value>
     </simple>
-    <configurationkind kindtype="configure"/>
+    <configurationkind kindtype="property"/>
   </struct>
 </properties>

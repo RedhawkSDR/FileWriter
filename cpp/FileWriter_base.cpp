@@ -34,6 +34,7 @@ FileWriter_base::FileWriter_base(const char *uuid, const char *label) :
     Component(uuid, label),
     ThreadedComponent()
 {
+#ifdef BEGIN_AUTOCOMPLETE_IGNORE
     loadProperties();
 
     dataChar_in = new bulkio::InCharPort("dataChar_in");
@@ -54,6 +55,7 @@ FileWriter_base::FileWriter_base(const char *uuid, const char *label) :
     addPort("MessageEvent_out", "MessageEvent output port. Messages sent for the opening and closing of files. ", MessageEvent_out);
     dataFile_out = new bulkio::OutFilePort("dataFile_out");
     addPort("dataFile_out", "Output port that provided the file URL for writen file. ", dataFile_out);
+#endif
 }
 
 FileWriter_base::~FileWriter_base()
@@ -78,6 +80,7 @@ FileWriter_base::~FileWriter_base()
     dataFile_out = 0;
 }
 
+#ifdef BEGIN_AUTOCOMPLETE_IGNORE
 /*******************************************************************************************
     Framework-level functions
     These functions are generally called by the framework to perform housekeeping.
@@ -117,7 +120,7 @@ void FileWriter_base::loadProperties()
                 "readwrite",
                 "",
                 "external",
-                "configure");
+                "property");
 
     addProperty(destination_uri_suffix,
                 "",
@@ -126,7 +129,7 @@ void FileWriter_base::loadProperties()
                 "readwrite",
                 "",
                 "external",
-                "configure");
+                "property");
 
     addProperty(file_format,
                 "RAW",
@@ -135,7 +138,7 @@ void FileWriter_base::loadProperties()
                 "readwrite",
                 "",
                 "external",
-                "configure");
+                "property");
 
     addProperty(swap_bytes,
                 false,
@@ -144,7 +147,7 @@ void FileWriter_base::loadProperties()
                 "readwrite",
                 "",
                 "external",
-                "configure");
+                "property");
 
     addProperty(recording_enabled,
                 true,
@@ -153,7 +156,7 @@ void FileWriter_base::loadProperties()
                 "readwrite",
                 "",
                 "external",
-                "configure");
+                "property");
 
     addProperty(advanced_properties,
                 advanced_properties_struct(),
@@ -162,7 +165,7 @@ void FileWriter_base::loadProperties()
                 "readwrite",
                 "",
                 "external",
-                "configure");
+                "property");
 
     addProperty(file_io_message,
                 file_io_message_struct(),
@@ -180,7 +183,7 @@ void FileWriter_base::loadProperties()
                 "readonly",
                 "",
                 "external",
-                "configure");
+                "property");
 
     addProperty(recording_timer,
                 "recording_timer",
@@ -188,8 +191,9 @@ void FileWriter_base::loadProperties()
                 "readwrite",
                 "",
                 "external",
-                "configure");
+                "property");
 
 }
+#endif
 
 
