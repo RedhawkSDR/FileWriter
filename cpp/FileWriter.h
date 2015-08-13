@@ -60,6 +60,7 @@
 #include <MidasKey.h>
 #include <abstracted_file_io.h>
 #include <byte_swap.h>
+#include <boost_compat.h>
 class FileWriter_i;
 
 #define METADATA_EXTENSION ".metadata.xml"
@@ -107,8 +108,8 @@ struct file_struct{
         stream_id = file_stream_id;
         midas_type = "";
 
-        boost::filesystem::path uri_path = boost::filesystem::path(uri_filename, boost::filesystem::native);
-        basename = uri_path.filename();
+        boost::filesystem::path uri_path = BOOST_FILESYSTEM_PATH(uri_filename);
+        basename = BOOST_PATH_STRING(uri_path.filename());
         dirname = uri_path.parent_path().string();
 
 
