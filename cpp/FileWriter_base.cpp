@@ -34,7 +34,6 @@ FileWriter_base::FileWriter_base(const char *uuid, const char *label) :
     Component(uuid, label),
     ThreadedComponent()
 {
-#ifdef BEGIN_AUTOCOMPLETE_IGNORE
     loadProperties();
 
     dataChar_in = new bulkio::InCharPort("dataChar_in");
@@ -55,7 +54,6 @@ FileWriter_base::FileWriter_base(const char *uuid, const char *label) :
     addPort("MessageEvent_out", "MessageEvent output port. Messages sent for the opening and closing of files. ", MessageEvent_out);
     dataFile_out = new bulkio::OutFilePort("dataFile_out");
     addPort("dataFile_out", "Output port that provided the file URL for writen file. ", dataFile_out);
-#endif
 }
 
 FileWriter_base::~FileWriter_base()
@@ -80,7 +78,6 @@ FileWriter_base::~FileWriter_base()
     dataFile_out = 0;
 }
 
-#ifdef BEGIN_AUTOCOMPLETE_IGNORE
 /*******************************************************************************************
     Framework-level functions
     These functions are generally called by the framework to perform housekeeping.
@@ -194,6 +191,5 @@ void FileWriter_base::loadProperties()
                 "property");
 
 }
-#endif
 
 
