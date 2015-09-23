@@ -55,7 +55,10 @@ void FileWriter_i::initialize() throw (CF::LifeCycle::InitializeError, CORBA::Sy
 			if (getDomainManager() && !CORBA::is_nil(getDomainManager()->getRef())) {
 				std::string dom_id = ossie::corba::returnString(getDomainManager()->getRef()->identifier());
 				dm = FILE_WRITER_DOMAIN_MGR_HELPERS::domainManager_id_to_var(dom_id);
-			}
+			} else {
+                // it's an invalid domain manager
+                throw std::invalid_argument("The Domain Manager pointer is nil");
+            }
         	filesystem.update_sca_file_manager(dm->fileMgr());
         	component_status.domain_name = ossie::corba::returnString(dm->name());
         }
@@ -119,6 +122,8 @@ void FileWriter_i::change_uri() {
     			if (getDomainManager() && !CORBA::is_nil(getDomainManager()->getRef())) {
     				std::string dom_id = ossie::corba::returnString(getDomainManager()->getRef()->identifier());
     				dm = FILE_WRITER_DOMAIN_MGR_HELPERS::domainManager_id_to_var(dom_id);
+                } else {
+                    throw std::invalid_argument("The Domain Manager pointer is nil");
                 }
                 filesystem.update_sca_file_manager(dm->fileMgr());
             	component_status.domain_name = ossie::corba::returnString(dm->name());
