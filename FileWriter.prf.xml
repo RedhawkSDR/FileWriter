@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE properties PUBLIC "-//JTRS//DTD SCA V2.2.2 PRF//EN" "properties.dtd">
+<properties>
+  <simple id="destination_uri" mode="readwrite" name="destination_uri" type="string">
+    <description>URI accepted prefix's:
+file://	Local Filesystem
+sca:// 	SCA Filesystem (path relative to SDRROOT/dom)
+
+</description>
+    <value>sca:///data/%STREAMID%.%TIMESTAMP%.%MODE%.%SR%.%DT%</value>
+    <kind kindtype="configure"/>
+    <action type="external"/>
+  </simple>
+  <simple id="destination_uri_suffix" mode="readwrite" name="destination_uri_suffix" type="string">
+    <description>Will be appended to the destination_uri</description>
+    <value></value>
+    <kind kindtype="configure"/>
+    <action type="external"/>
+  </simple>
+  <simple id="file_format" mode="readwrite" name="file_format" type="string">
+    <value>RAW</value>
+    <enumerations>
+      <enumeration label="BLUE/PLATINUM FILE" value="BLUEFILE"/>
+      <enumeration label="RAW (BULKIO)" value="RAW"/>
+    </enumerations>
+    <kind kindtype="configure"/>
+    <action type="external"/>
+  </simple>
+  <simple id="recording_enabled" mode="readwrite" name="recording_enabled" type="boolean">
+    <value>true</value>
+    <kind kindtype="configure"/>
+    <action type="external"/>
+  </simple>
+  <struct id="advanced_properties" mode="readwrite" name="advanced_properties">
+    <simple id="advanced_properties::force_flush" mode="readwrite" name="force_flush" type="boolean">
+      <description>Force a buffer (file) flush on every incoming pushPacket</description>
+      <value>false</value>
+      <kind kindtype="configure"/>
+      <action type="external"/>
+    </simple>
+    <simple id="advanced_properties::max_file_size" mode="readwrite" name="max_file_size" type="string">
+      <description></description>
+      <value>UNLIMITED</value>
+      <kind kindtype="configure"/>
+      <action type="external"/>
+    </simple>
+    <simple id="advanced_properties::max_file_time" mode="readwrite" name="max_file_time" type="long">
+      <description>-1 means unlimited</description>
+      <value>-1</value>
+      <units>seconds</units>
+      <kind kindtype="configure"/>
+      <action type="external"/>
+    </simple>
+    <simple id="advanced_properties::existing_file" mode="readwrite" name="existing_file" type="string">
+      <value>RENAME</value>
+      <enumerations>
+        <enumeration label="APPEND" value="APPEND"/>
+        <enumeration label="DROP" value="DROP"/>
+        <enumeration label="TRUNCATE" value="TRUNCATE"/>
+        <enumeration label="RENAME" value="RENAME"/>
+      </enumerations>
+      <kind kindtype="configure"/>
+      <action type="external"/>
+    </simple>
+    <simple id="advanced_properties::create_destination_dir" mode="readwrite" name="create_destination_dir" type="boolean">
+      <value>true</value>
+      <kind kindtype="configure"/>
+      <action type="external"/>
+    </simple>
+    <simple id="advanced_properties::enable_metadata_file" mode="readwrite" name="enable_metadata_file" type="boolean">
+      <value>false</value>
+      <kind kindtype="configure"/>
+      <action type="external"/>
+    </simple>
+    <simple id="advanced_properties::swap_bytes" mode="readwrite" name="swap_bytes" type="boolean">
+      <description>iEEE EEEI (</description>
+      <value>false</value>
+      <kind kindtype="configure"/>
+      <action type="external"/>
+    </simple>
+    <simple id="advanced_properties::reset_on_max_file" name="reset_on_max_file" type="boolean">
+      <value>true</value>
+    </simple>
+    <simple id="advanced_properties::reset_on_retune" name="reset_on_retune" type="boolean">
+      <value>false</value>
+    </simple>
+    <configurationkind kindtype="configure"/>
+  </struct>
+  <structsequence id="recording_timer" mode="readwrite" name="recording_timer">
+    <description>Provides the ability to enable/disable recordings based on a timestamp. This provides only approximate snaps. It starts recoding on the pushPacket following the enabled timestamps and quits recording on the first pushPacket following the disabled timestamp. </description>
+    <struct id="recording_timer::timer_struct" mode="readwrite" name="timer_struct">
+      <simple id="recording_timer::timer_struct::recording_enable" mode="readwrite" name="recording_enable" type="boolean">
+        <value>true</value>
+        <kind kindtype="configure"/>
+        <action type="external"/>
+      </simple>
+      <simple id="recording_timer::timer_struct::use_pkt_timestamp" mode="readwrite" name="use_pkt_timestamp" type="boolean">
+        <value>false</value>
+        <kind kindtype="configure"/>
+        <action type="external"/>
+      </simple>
+      <simple id="recording_timer::timer_struct::twsec" mode="readwrite" name="twsec" type="double">
+        <value>0</value>
+        <kind kindtype="configure"/>
+        <action type="external"/>
+      </simple>
+      <simple id="recording_timer::timer_struct::tfsec" mode="readwrite" name="tfsec" type="double">
+        <value>0</value>
+        <kind kindtype="configure"/>
+        <action type="external"/>
+      </simple>
+      <configurationkind kindtype="configure"/>
+    </struct>
+    <configurationkind kindtype="configure"/>
+  </structsequence>
+  <struct id="file_io_message" mode="readwrite">
+    <simple id="file_io_message::file_operation" name="file_operation" type="string">
+      <value>OPEN</value>
+      <enumerations>
+        <enumeration label="OPEN" value="OPEN"/>
+        <enumeration label="CLOSE" value="CLOSE"/>
+      </enumerations>
+    </simple>
+    <simple id="file_io_message::stream_id" name="stream_id" type="string"/>
+    <simple id="file_io_message::filename" name="filename" type="string"/>
+    <configurationkind kindtype="message"/>
+  </struct>
+</properties>

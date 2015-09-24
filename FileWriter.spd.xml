@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE softpkg PUBLIC "-//JTRS//DTD SCA V2.2.2 SPD//EN" "softpkg.dtd">
+<softpkg id="DCE:11e814bc-c631-400a-a48d-f0f153d5fa9e" name="FileWriter" type="sca_compliant" version="3.0.0-dev0">
+  <title></title>
+  <author>
+    <name></name>
+  </author>
+  <propertyfile type="PRF">
+    <localfile name="FileWriter.prf.xml"/>
+  </propertyfile>
+  <descriptor>
+    <localfile name="FileWriter.scd.xml"/>
+  </descriptor>
+  <implementation id="cpp">
+    <description>The implementation contains descriptive information about the template for a software component.</description>
+    <code type="Executable">
+      <localfile name="cpp/FileWriter"/>
+      <entrypoint>cpp/FileWriter</entrypoint>
+    </code>
+    <compiler name="/usr/bin/gcc" version="4.1.2"/>
+    <programminglanguage name="C++"/>
+    <humanlanguage name="EN"/>
+    <os name="Linux"/>
+    <dependency type="runtime_requirements">
+      <softpkgref>
+        <localfile name="/deps/RedhawkDevUtils_v1/RedhawkDevUtils_v1.spd.xml"/>
+      </softpkgref>
+    </dependency>
+    <processor name="x86"/>
+    <processor name="x86_64"/>
+    <dependency type="matching">
+      <softpkgref>
+        <localfile name="/deps/blueFileLib_v1/blueFileLib_v1.spd.xml"/>
+      </softpkgref>
+    </dependency>
+  </implementation>
+</softpkg>
