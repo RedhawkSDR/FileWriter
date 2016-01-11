@@ -29,7 +29,7 @@ Prefix:         %{_prefix}
 %define _infodir       %{_prefix}/info
 
 Name:           rh.FileWriter
-Version:        4.0.0
+Version:        4.0.1
 Release:        1%{?dist}
 Summary:        Component %{name}
 
