@@ -41,7 +41,6 @@ FileWriter_base(uuid, label) {
     addPropertyChangeListener("file_format", this, &FileWriter_i::file_formatChanged);
     addPropertyChangeListener("advanced_properties", this, &FileWriter_i::advanced_propertiesChanged);
     addPropertyChangeListener("recording_timer", this, &FileWriter_i::recording_timerChanged);
-    change_uri();
 }
 
 FileWriter_i::~FileWriter_i() {
@@ -49,35 +48,11 @@ FileWriter_i::~FileWriter_i() {
 
 void FileWriter_i::initialize() throw (CF::LifeCycle::InitializeError, CORBA::SystemException) {
     FileWriter_base::initialize();
-    try {
-        if(!filesystem.is_sca_file_manager_valid()){
-			CF::DomainManager_var dm = CF::DomainManager::_nil();
-			if (getDomainManager() && !CORBA::is_nil(getDomainManager()->getRef())) {
-				std::string dom_id = ossie::corba::returnString(getDomainManager()->getRef()->identifier());
-				dm = FILE_WRITER_DOMAIN_MGR_HELPERS::domainManager_id_to_var(dom_id);
-			} else {
-                // it's an invalid domain manager
-                throw std::invalid_argument("The Domain Manager pointer is nil");
-            }
-        	filesystem.update_sca_file_manager(dm->fileMgr());
-        	component_status.domain_name = ossie::corba::returnString(dm->name());
-        }
-
-    } catch (...) {
-    	LOG_DEBUG(FileWriter_i,"Exception caught while attempting to update sca file manager");
-    	//component_status.domain_name = "(domainless)"; // leave as default value
-    };
+    change_uri();
 }
 
 void FileWriter_i::start() throw (CF::Resource::StartError, CORBA::SystemException) {
     FileWriter_base::start();
-   /* try{
-         change_uri();
-    }
-    catch(...){
-        LOG_WARN(FileWriter_i, "No Domain was found, preceeding with local filesystem");
-    }
-     */
 }
 
 void FileWriter_i::stop() throw (CF::Resource::StopError, CORBA::SystemException) {
@@ -115,18 +90,22 @@ void FileWriter_i::change_uri() {
     prefix = ABSTRACTED_FILE_IO::local_uri_prefix;
     if (type == ABSTRACTED_FILE_IO::SCA_FILESYSTEM) {
         prefix = ABSTRACTED_FILE_IO::sca_uri_prefix;
-        //do{
         try {
             if(!filesystem.is_sca_file_manager_valid()){
-    			CF::DomainManager_var dm = CF::DomainManager::_nil();
     			if (getDomainManager() && !CORBA::is_nil(getDomainManager()->getRef())) {
     				std::string dom_id = ossie::corba::returnString(getDomainManager()->getRef()->identifier());
-    				dm = FILE_WRITER_DOMAIN_MGR_HELPERS::domainManager_id_to_var(dom_id);
+    				CF::DomainManager_var dm = FILE_WRITER_DOMAIN_MGR_HELPERS::domainManager_id_to_var(dom_id);
+    		    	if (!CORBA::is_nil(dm)){
+						filesystem.update_sca_file_manager(dm->fileMgr());
+						component_status.domain_name = ossie::corba::returnString(dm->name());
+					} else {
+			        	LOG_DEBUG(FileWriter_i,"Domain Manager var is nil, throwing logic_error...");
+						throw std::logic_error("The Domain Manager var is nil");
+					}
                 } else {
-                    throw std::invalid_argument("The Domain Manager pointer is nil");
+		        	LOG_DEBUG(FileWriter_i,"Domain Manager pointer is nil, throwing logic_error...");
+                    throw std::logic_error("The Domain Manager pointer is nil");
                 }
-                filesystem.update_sca_file_manager(dm->fileMgr());
-            	component_status.domain_name = ossie::corba::returnString(dm->name());
             }
 
         } catch (...) {
