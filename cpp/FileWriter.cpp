@@ -424,6 +424,8 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
         if (close) {
             close_file(destination_filename, packet->T, stream_id);
             stream_to_file_mapping.erase(stream_id);
+            curFileIter = stream_to_file_mapping.end();
+            destination_filename.clear();
         }
     }
 
