@@ -166,17 +166,17 @@ public:
 
     void start() throw (CF::Resource::StartError, CORBA::SystemException);
     void stop() throw (CF::Resource::StopError, CORBA::SystemException);
-    //void configure(const CF::Properties&) throw (CORBA::SystemException, CF::PropertySet::InvalidConfiguration, CF::PropertySet::PartialConfiguration);
-    void initialize() throw (CF::LifeCycle::InitializeError, CORBA::SystemException);
+    void constructor ();
 private:
     /*property change listener methods*/
-    void destination_uriChanged(const std::string *oldValue, const std::string *newValue);
-    void destination_uri_suffixChanged(const std::string *oldValue, const std::string *newValue);
+    void destination_uriChanged(std::string oldValue, std::string newValue);
+    void destination_uri_suffixChanged(std::string oldValue, std::string newValue);
     void change_uri();
-    void file_formatChanged(const std::string *oldValue, const std::string *newValue);
-    void recording_enabledChanged(const bool *oldValue, const bool *newValue); 
-    void advanced_propertiesChanged(const advanced_properties_struct *oldValue, const advanced_properties_struct *newValue);
-    void recording_timerChanged(const std::vector<timer_struct_struct> *oldValue, const std::vector<timer_struct_struct> *newValue);
+    void file_formatChanged(std::string oldValue, std::string newValue);
+    void recording_enabledChanged(bool oldValue, const bool *newValue);
+    void advanced_propertiesChanged(const advanced_properties_struct &oldValue, const advanced_properties_struct &newValue);
+    void recording_timerChanged(const std::vector<timer_struct_struct> &oldValue, const std::vector<timer_struct_struct> &newValue);
+    void construct_recording_timer(const std::vector<timer_struct_struct> &timers);
     
     long maxSize;
     std::string prop_dirname;

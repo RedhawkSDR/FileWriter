@@ -33,21 +33,29 @@ PREPARE_LOGGING(FileWriter_i)
 
 FileWriter_i::FileWriter_i(const char *uuid, const char *label) :
 FileWriter_base(uuid, label) {
-    maxSize = 0;
-    timer_set_iter = timer_set.end();
     //properties are not updated until callback function is called and they are explicitly set.
-    addPropertyChangeListener("destination_uri", this, &FileWriter_i::destination_uriChanged);
-    addPropertyChangeListener("destination_uri_suffix", this, &FileWriter_i::destination_uri_suffixChanged);
-    addPropertyChangeListener("file_format", this, &FileWriter_i::file_formatChanged);
-    addPropertyChangeListener("advanced_properties", this, &FileWriter_i::advanced_propertiesChanged);
-    addPropertyChangeListener("recording_timer", this, &FileWriter_i::recording_timerChanged);
+    addPropertyListener(destination_uri, this, &FileWriter_i::destination_uriChanged);
+    addPropertyListener(destination_uri_suffix, this, &FileWriter_i::destination_uri_suffixChanged);
+    addPropertyListener(file_format, this, &FileWriter_i::file_formatChanged);
+    addPropertyListener(advanced_properties, this, &FileWriter_i::advanced_propertiesChanged);
+    addPropertyListener(recording_timer, this, &FileWriter_i::recording_timerChanged);
 }
 
 FileWriter_i::~FileWriter_i() {
 }
 
-void FileWriter_i::initialize() throw (CF::LifeCycle::InitializeError, CORBA::SystemException) {
-    FileWriter_base::initialize();
+/*
+* REDHAWK constructor. All properties are initialized before this constructor is called
+*/
+void FileWriter_i::constructor() {
+
+    // accounts for initial values of properties since callbacks are not called
+    construct_recording_timer(recording_timer);
+    if (file_format == "BLUEFILE")
+        current_writer_type = BLUEFILE;
+    else
+        current_writer_type = RAW;
+    maxSize = sizeString_to_longBytes(advanced_properties.max_file_size);
     change_uri();
 }
 
@@ -67,16 +75,16 @@ void FileWriter_i::stop() throw (CF::Resource::StopError, CORBA::SystemException
 	timer_set_iter = timer_set.end();
 }
 
-void FileWriter_i::destination_uriChanged(const std::string *oldValue, const std::string *newValue) {
+void FileWriter_i::destination_uriChanged(std::string oldValue, std::string newValue) {
     exclusive_lock lock(service_thread_lock);
-    if (*oldValue != *newValue) {
+    if (oldValue != newValue) {
         change_uri();
     }
 }
 
-void FileWriter_i::destination_uri_suffixChanged(const std::string *oldValue, const std::string *newValue) {
+void FileWriter_i::destination_uri_suffixChanged(std::string oldValue, std::string newValue) {
     exclusive_lock lock(service_thread_lock);
-    if (*oldValue != *newValue) {
+    if (oldValue != newValue) {
         change_uri();
     }
 }
@@ -147,43 +155,42 @@ void FileWriter_i::change_uri() {
     }
 }
 
-void FileWriter_i::file_formatChanged(const std::string *oldValue, const std::string *newValue) {
+void FileWriter_i::file_formatChanged(std::string oldValue, std::string newValue){
     exclusive_lock lock(service_thread_lock);
-    if (*oldValue != *newValue) {
-        if (file_format == "BLUEFILE")
+    if (oldValue != newValue) {
+        if (newValue == "BLUEFILE")
             current_writer_type = BLUEFILE;
         else
             current_writer_type = RAW;
     }
 }
 
-void FileWriter_i::advanced_propertiesChanged(const advanced_properties_struct *oldValue, const advanced_properties_struct *newValue) {
+void FileWriter_i::advanced_propertiesChanged(const advanced_properties_struct &oldValue, const advanced_properties_struct &newValue) {
     exclusive_lock lock(service_thread_lock);
-    if (oldValue->max_file_size != newValue->max_file_size) {
-        maxSize = sizeString_to_longBytes(advanced_properties.max_file_size);
+    if (oldValue.max_file_size != newValue.max_file_size) {
+        maxSize = sizeString_to_longBytes(newValue.max_file_size);
     }
 }
 
-void FileWriter_i::recording_timerChanged(const std::vector<timer_struct_struct> *oldValue, const std::vector<timer_struct_struct> *newValue) {
+void FileWriter_i::recording_timerChanged(const std::vector<timer_struct_struct> &oldValue, const std::vector<timer_struct_struct> &newValue) {
+    construct_recording_timer(newValue);
+}
+
+void FileWriter_i::construct_recording_timer(const std::vector<timer_struct_struct> &timers) {
     exclusive_lock lock(service_thread_lock);
     timer_set.clear();
 
-    for (unsigned int i=0; i<newValue->size(); ++i){
-        if (newValue->at(i) != oldValue->at(i)){
-
-        	if (newValue->at(i).recording_enable){
-        		BULKIO::PrecisionUTCTime timer_element;
-        		//modified the interpretation of tcmode and tcstatus
-        		timer_element.tcmode = newValue->at(i).use_pkt_timestamp;
-        		timer_element.tcstatus = newValue->at(i).recording_enable;
-        		timer_element.toff = 0;
-        		timer_element.twsec = newValue->at(i).twsec;
-        		timer_element.tfsec = newValue->at(i).tfsec;
-        		timer_set.insert(timer_element);
-        		timer_set_iter = timer_set.begin();
-        	}
-        }
+    for (unsigned int i=0; i<timers.size(); ++i){
+        BULKIO::PrecisionUTCTime timer_element;
+        //modified the interpretation of tcmode and tcstatus
+        timer_element.tcmode = timers.at(i).use_pkt_timestamp;
+        timer_element.tcstatus = timers.at(i).recording_enable;
+        timer_element.toff = 0;
+        timer_element.twsec = timers.at(i).twsec;
+        timer_element.tfsec = timers.at(i).tfsec;
+        timer_set.insert(timer_element);
     }
+    timer_set_iter = timer_set.begin();
 }
 
 /***********************************************************************************************
