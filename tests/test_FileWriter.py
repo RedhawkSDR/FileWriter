@@ -443,6 +443,94 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         
         print "........ PASSED\n"
         return
+    
+    
+
+    def testBaseUri(self):
+        #######################################################################
+        # Test base uri w/ keyword substitution
+        print "\n**TESTING URI w/ KW Substitution"
+        
+        #Define test files
+        dataFileIn = './data.in'
+        STREAMID = 'baseuritest'
+        COL_RF = 1.2e6
+        CHAN_RF1 = 1.25e6
+        CHAN_RF2 = 1.15e6
+        COLRF_HZ = '1200000Hz'
+        CF_HZ1 = CHANRF_HZ1 = '1250000Hz'
+        CF_HZ2 = CHANRF_HZ2 = '1150000Hz'
+        MY_KEYWORD = 'customkw'
+        dataFileOut_template = './%s.%s.%s.%s.%s.out'
+        dataFileOut1 = dataFileOut_template%(STREAMID,CF_HZ1,COLRF_HZ,CHANRF_HZ1,MY_KEYWORD)
+        dataFileOut2 = dataFileOut_template%(STREAMID,CF_HZ2,COLRF_HZ,CHANRF_HZ2,MY_KEYWORD)
+        
+        keywords1 = [sb.io_helpers.SRIKeyword('COL_RF',COL_RF, 'double'),
+                     sb.io_helpers.SRIKeyword('CHAN_RF',CHAN_RF1, 'double'),
+                     sb.io_helpers.SRIKeyword('MY_KEYWORD',MY_KEYWORD, 'string')]
+        
+        keywords2 = [sb.io_helpers.SRIKeyword('COL_RF',COL_RF, 'double'),
+                     sb.io_helpers.SRIKeyword('CHAN_RF',CHAN_RF2, 'double'),
+                     sb.io_helpers.SRIKeyword('MY_KEYWORD',MY_KEYWORD, 'string')]
+
+        
+        #Create Test Data File if it doesn't exist
+        if not os.path.isfile(dataFileIn):
+            with open(dataFileIn, 'wb') as dataIn:
+                dataIn.write(os.urandom(1024))
+        
+        #Read in Data from Test File
+        size = os.path.getsize(dataFileIn)
+        with open (dataFileIn, 'rb') as dataIn:
+            data = list(struct.unpack('f' * (size/4), dataIn.read(size)))
+
+
+
+        #Create Components and Connections
+        comp = sb.launch('../FileWriter.spd.xml')
+        comp.destination_uri = dataFileOut_template%('%STREAMID%','%CF_HZ%','%COLRF_HZ%','%CHANRF_HZ%','%MY_KEYWORD%')
+        comp.advanced_properties.existing_file = "TRUNCATE"
+        
+        source = sb.DataSource(bytesPerPush=64, dataFormat='32f')
+        source.connect(comp,providesPortName='dataFloat_in')
+        
+        #Start Components & Push Data
+        sb.start()
+        source.push(data, streamID=STREAMID, SRIKeywords=keywords1)
+        time.sleep(2)
+        source.push(data, streamID=STREAMID, SRIKeywords=keywords2)
+        time.sleep(2)
+        sb.stop()
+
+        #Check that the input and output files are the same
+        try:
+            dataFileOut=dataFileOut1
+            self.assertEqual(filecmp.cmp(dataFileIn, dataFileOut), True)
+            dataFileOut=dataFileOut2
+            self.assertEqual(filecmp.cmp(dataFileIn, dataFileOut), True)
+        except self.failureException as e:
+            # unpacked bytes may be NaN, which could cause test to fail unnecessarily
+            size = os.path.getsize(dataFileOut)
+            with open (dataFileOut, 'rb') as dataOut:
+                data2 = list(struct.unpack('f' * (size/4), dataOut.read(size)))
+            for a,b in zip(data,data2):
+                if a!=b:
+                    if a!=a and b!=b:
+                        print "Difference in NaN format, ignoring..."
+                    else:
+                        print "FAILED:",a,"!=",b
+                        raise e
+
+        #Release the components and remove the generated files
+        finally:
+            comp.releaseObject()
+            source.releaseObject()
+            os.remove(dataFileIn)
+            os.remove(dataFileOut1)
+            os.remove(dataFileOut2)
+        
+        print "........ PASSED\n"
+        return
 
 if __name__ == "__main__":
     ossie.utils.testing.main("../FileWriter.spd.xml") # By default tests all implementations
