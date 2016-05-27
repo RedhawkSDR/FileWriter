@@ -375,16 +375,38 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
         curFileDescIter = file_to_struct_mapping.find(destination_filename);
     }
 
-    // If recording is disabled, make sure files are closed
-    if (!recording_enabled){
-         if (!destination_filename.empty()) {
-             LOG_DEBUG(FileWriter_i, "CLOSING FILE: " << destination_filename << " DUE TO RECORDING BEING DISABLED!");
-             close_file(destination_filename, packet->T, stream_id);
-             stream_to_file_mapping.erase(stream_id);
-         }
-         delete packet;
-         return true;
+    // RECORDING TIMER
+     // modified the interpretation of tcmode and tcstatus
+     //   tcmode stores (bool) use_pkt_timestamp
+     //   tcstatus stores (bool) recording_enable
+    bool next_recording_enable = recording_enabled;
+    while (timer_set_iter != timer_set.end()) {
+        timer_timestamp = getSystemTimestamp();
+        if (timer_set_iter->tcmode == 1) // if use_pkt_timestamp
+            timer_timestamp = packet->T;
+        if (compare_utc_time(timer_timestamp, *timer_set_iter))
+            break;
+        next_recording_enable = (timer_set_iter->tcstatus == 1);
+        timer_set_iter++;
     }
+
+    // If recording is disabled, make sure files are closed and check timer
+    if (!recording_enabled){
+        if (!destination_filename.empty()) {
+            LOG_DEBUG(FileWriter_i, "CLOSING FILE: " << destination_filename << " DUE TO RECORDING BEING DISABLED!");
+            close_file(destination_filename, packet->T, stream_id);
+            stream_to_file_mapping.erase(stream_id);
+            curFileIter = stream_to_file_mapping.end();
+            destination_filename.clear();
+        }
+
+        // If still disabled, clean up and return
+        if (!next_recording_enable){
+            delete packet;
+            return true;
+        }
+    }
+    recording_enabled = next_recording_enable; // this takes effect next iteration
 
     // Do not open a file handle that will be of size 0
     if (packet->dataBuffer.empty() && packet->EOS && destination_filename.empty()){
@@ -396,18 +418,6 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
     if (curFileIter != stream_to_file_mapping.end() && curFileDescIter == file_to_struct_mapping.end()){
         delete packet;
         return true;
-    }
-
-
-    // RECORDING TIMER
-    while (timer_set_iter != timer_set.end()) {
-        timer_timestamp = getSystemTimestamp();
-        if (timer_set_iter->tcmode == 1)
-            timer_timestamp = packet->T;
-        if (utc_time_comp_obj.operator() (timer_timestamp, *timer_set_iter))
-            break;
-        recording_enabled = (timer_set_iter->tcstatus == 1);
-        timer_set_iter++;
     }
 
     // RESET ON RETUNE

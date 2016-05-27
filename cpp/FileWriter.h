@@ -280,6 +280,11 @@ private:
 
         }
     };
+    inline bool compare_utc_time(const BULKIO::PrecisionUTCTime & time1, const BULKIO::PrecisionUTCTime & time2) const {
+        if (time1.twsec != time2.twsec)
+            return time1.twsec < time2.twsec;
+        return time1.tfsec < time2.tfsec;
+    }
     std::set<BULKIO::PrecisionUTCTime,utc_time_comp> timer_set;
     std::set<BULKIO::PrecisionUTCTime,utc_time_comp>::iterator timer_set_iter;
     utc_time_comp utc_time_comp_obj;
