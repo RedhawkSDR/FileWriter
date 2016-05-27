@@ -66,13 +66,13 @@ void FileWriter_i::start() throw (CF::Resource::StartError, CORBA::SystemExcepti
 void FileWriter_i::stop() throw (CF::Resource::StopError, CORBA::SystemException) {
     FileWriter_base::stop();
 
-	exclusive_lock lock(service_thread_lock);
+    exclusive_lock lock(service_thread_lock);
 
-	for (std::map<std::string, std::string>::iterator curFileIter = stream_to_file_mapping.begin(); curFileIter != stream_to_file_mapping.end(); curFileIter++) {
-		close_file(curFileIter->second, getSystemTimestamp());
-	}
-	stream_to_file_mapping.clear();
-	timer_set_iter = timer_set.end();
+    for (std::map<std::string, std::string>::iterator curFileIter = stream_to_file_mapping.begin(); curFileIter != stream_to_file_mapping.end(); curFileIter++) {
+        close_file(curFileIter->second, getSystemTimestamp());
+    }
+    stream_to_file_mapping.clear();
+    timer_set_iter = timer_set.end();
 }
 
 void FileWriter_i::destination_uriChanged(std::string oldValue, std::string newValue) {
@@ -100,25 +100,25 @@ void FileWriter_i::change_uri() {
         prefix = ABSTRACTED_FILE_IO::sca_uri_prefix;
         try {
             if(!filesystem.is_sca_file_manager_valid()){
-    			if (getDomainManager() && !CORBA::is_nil(getDomainManager()->getRef())) {
-    				std::string dom_id = ossie::corba::returnString(getDomainManager()->getRef()->identifier());
-    				CF::DomainManager_var dm = FILE_WRITER_DOMAIN_MGR_HELPERS::domainManager_id_to_var(dom_id);
-    		    	if (!CORBA::is_nil(dm)){
-						filesystem.update_sca_file_manager(dm->fileMgr());
-						component_status.domain_name = ossie::corba::returnString(dm->name());
-					} else {
-			        	LOG_DEBUG(FileWriter_i,"Domain Manager var is nil, throwing logic_error...");
-						throw std::logic_error("The Domain Manager var is nil");
-					}
+                if (getDomainManager() && !CORBA::is_nil(getDomainManager()->getRef())) {
+                    std::string dom_id = ossie::corba::returnString(getDomainManager()->getRef()->identifier());
+                    CF::DomainManager_var dm = FILE_WRITER_DOMAIN_MGR_HELPERS::domainManager_id_to_var(dom_id);
+                    if (!CORBA::is_nil(dm)){
+                        filesystem.update_sca_file_manager(dm->fileMgr());
+                        component_status.domain_name = ossie::corba::returnString(dm->name());
+                    } else {
+                        LOG_DEBUG(FileWriter_i,"Domain Manager var is nil, throwing logic_error...");
+                        throw std::logic_error("The Domain Manager var is nil");
+                    }
                 } else {
-		        	LOG_DEBUG(FileWriter_i,"Domain Manager pointer is nil, throwing logic_error...");
+                    LOG_DEBUG(FileWriter_i,"Domain Manager pointer is nil, throwing logic_error...");
                     throw std::logic_error("The Domain Manager pointer is nil");
                 }
             }
 
         } catch (...) {
-        	LOG_DEBUG(FileWriter_i,"Exception caught while attempting to update sca file manager");
-        	//component_status.domain_name = "(domainless)"; // leave as default value
+            LOG_DEBUG(FileWriter_i,"Exception caught while attempting to update sca file manager");
+            //component_status.domain_name = "(domainless)"; // leave as default value
             LOG_INFO(FileWriter_i, "Cannot determine domain, defaulting to local $SDRROOT filesystem");
             char* sdr_env = getenv("SDRROOT");
             std::string sdr_root(sdr_env);
@@ -457,7 +457,7 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
             std::vector<uint32_t> *svp = (std::vector<uint32_t> *) & packet->dataBuffer;
             std::transform(svp->begin(), svp->end(), svp->begin(), Byte_Swap32<uint32_t>);
         } else if (dt.find("64") != std::string::npos) {
-        	LOG_DEBUG(FileWriter_i, "SWAP_BYTES - swapping 64");
+            LOG_DEBUG(FileWriter_i, "SWAP_BYTES - swapping 64");
             std::vector<uint64_t> *svp = (std::vector<uint64_t> *) & packet->dataBuffer;
             std::transform(svp->begin(), svp->end(), svp->begin(), Byte_Swap64<uint64_t>);
         }
@@ -466,7 +466,7 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
         try {
 
             // Is File New
-        	bool new_file = destination_filename.empty();
+            bool new_file = destination_filename.empty();
             if (new_file) {
                 std::string basename = stream_to_basename(stream_id, packet->SRI, packet->T, file_format, dt);
                 destination_filename = prop_dirname + basename;
@@ -547,7 +547,7 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
                             filesystem.read(fs.in_process_uri_filename, &buff, BLUEFILE_BLOCK_SIZE);
                             blue::HeaderControlBlock hcb = blue::HeaderControlBlock((const blue::hcb_s *) & buff[0]);
                             if (hcb.validate(false) != 0) {
-                            	LOG_WARN(FileWriter_i, "CAN NOT READ BLUEHEADER FOR APPENDING DATA!");
+                                LOG_WARN(FileWriter_i, "CAN NOT READ BLUEHEADER FOR APPENDING DATA!");
                             }
                             filesystem.file_seek(fs.in_process_uri_filename, hcb.getDataStart() + hcb.getDataSize());
                         }
@@ -569,7 +569,7 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
 
             long maxSize_time_size = maxSize;
             if (advanced_properties.max_file_time > 0) {
-                // seconds					*    samples/second     * B/sample
+                // seconds                    *    samples/second     * B/sample
                 long maxSize_time = advanced_properties.max_file_time * 1 / packet->SRI.xdelta * sizeof (packet->dataBuffer[0]) * (packet->SRI.mode + 1);
                 if (maxSize_time > 0 && (maxSize_time_size <= 0 || maxSize_time < maxSize_time_size))
                     maxSize_time_size = maxSize_time;
@@ -644,56 +644,56 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
 }
 
 bool FileWriter_i::close_file(const std::string& filename, const BULKIO::PrecisionUTCTime & timestamp, std::string streamId) {
-	std::map<std::string, file_struct>::iterator curFileDescIter = file_to_struct_mapping.find(filename);
-	if (curFileDescIter == file_to_struct_mapping.end())
-		return true;
+    std::map<std::string, file_struct>::iterator curFileDescIter = file_to_struct_mapping.find(filename);
+    if (curFileDescIter == file_to_struct_mapping.end())
+        return true;
 
 
-	std::string stream_id = streamId;
-	updateIfFound_KeywordValueByID<std::string>(&curFileDescIter->second.lastSRI, "STREAM_GROUP",stream_id);
+    std::string stream_id = streamId;
+    updateIfFound_KeywordValueByID<std::string>(&curFileDescIter->second.lastSRI, "STREAM_GROUP",stream_id);
 
 
-	curFileDescIter->second.num_writers--;
-	if (curFileDescIter->second.num_writers <= 0) {
-		if (curFileDescIter->second.file_type == BLUEFILE) {
-			size_t curPos = filesystem.file_tell(curFileDescIter->second.in_process_uri_filename);
-			std::pair<blue::HeaderControlBlock, std::vector<char> > bheaders = createBluefilesHeaders(curFileDescIter->second.lastSRI,
-							curPos, curFileDescIter->second.midas_type, curFileDescIter->second.start_time);
-			filesystem.file_seek(curFileDescIter->second.in_process_uri_filename, 0);
-			blue::hcb_s tmp_hcb = bheaders.first.getHCB();
-			filesystem.write(curFileDescIter->second.in_process_uri_filename, (char*) & tmp_hcb, BLUEFILE_BLOCK_SIZE, advanced_properties.force_flush);
-			filesystem.file_seek(curFileDescIter->second.in_process_uri_filename, curPos);
-			filesystem.write(curFileDescIter->second.in_process_uri_filename, (char*) &bheaders.second[0], bheaders.second.size(), advanced_properties.force_flush);
-		}
-		filesystem.close_file(curFileDescIter->second.in_process_uri_filename);
+    curFileDescIter->second.num_writers--;
+    if (curFileDescIter->second.num_writers <= 0) {
+        if (curFileDescIter->second.file_type == BLUEFILE) {
+            size_t curPos = filesystem.file_tell(curFileDescIter->second.in_process_uri_filename);
+            std::pair<blue::HeaderControlBlock, std::vector<char> > bheaders = createBluefilesHeaders(curFileDescIter->second.lastSRI,
+                            curPos, curFileDescIter->second.midas_type, curFileDescIter->second.start_time);
+            filesystem.file_seek(curFileDescIter->second.in_process_uri_filename, 0);
+            blue::hcb_s tmp_hcb = bheaders.first.getHCB();
+            filesystem.write(curFileDescIter->second.in_process_uri_filename, (char*) & tmp_hcb, BLUEFILE_BLOCK_SIZE, advanced_properties.force_flush);
+            filesystem.file_seek(curFileDescIter->second.in_process_uri_filename, curPos);
+            filesystem.write(curFileDescIter->second.in_process_uri_filename, (char*) &bheaders.second[0], bheaders.second.size(), advanced_properties.force_flush);
+        }
+        filesystem.close_file(curFileDescIter->second.in_process_uri_filename);
         if(curFileDescIter->second.in_process_uri_filename != curFileDescIter->second.uri_filename){
-        	filesystem.move_file(curFileDescIter->second.in_process_uri_filename,curFileDescIter->second.uri_filename);
+            filesystem.move_file(curFileDescIter->second.in_process_uri_filename,curFileDescIter->second.uri_filename);
         }
 
         if (curFileDescIter->second.metdata_file_enabled()) {
-        	std::string closeXML = "</FileWriter_metadata>";
+            std::string closeXML = "</FileWriter_metadata>";
             filesystem.write(curFileDescIter->second.in_process_uri_metadata_filename, &closeXML, advanced_properties.force_flush);
             filesystem.close_file(curFileDescIter->second.in_process_uri_metadata_filename);
             if(curFileDescIter->second.in_process_uri_metadata_filename != curFileDescIter->second.uri_metadata_filename){
-            	filesystem.move_file(curFileDescIter->second.in_process_uri_metadata_filename,curFileDescIter->second.uri_metadata_filename);
+                filesystem.move_file(curFileDescIter->second.in_process_uri_metadata_filename,curFileDescIter->second.uri_metadata_filename);
             }
         }
 
         if (advanced_properties.debug_output)
-        	std::cout << "DEBUG (" << __PRETTY_FUNCTION__ << "): CLOSED FILE: " << curFileDescIter->second.uri_filename << std::endl;
+            std::cout << "DEBUG (" << __PRETTY_FUNCTION__ << "): CLOSED FILE: " << curFileDescIter->second.uri_filename << std::endl;
         LOG_INFO(FileWriter_i, "CLOSED FILE: " << curFileDescIter->second.uri_filename );
 
         std::string sca_filename = filesystem.uri_to_file(curFileDescIter->second.uri_filename);
         file_io_message_struct file_event = create_file_io_message("CLOSE", stream_id, sca_filename);
-		BULKIO::PrecisionUTCTime tstamp = bulkio::time::utils::now();
-		MessageEvent_out->sendMessage(file_event);
-		dataFile_out->pushPacket(sca_filename.c_str(), tstamp, true, stream_id.c_str());
+        BULKIO::PrecisionUTCTime tstamp = bulkio::time::utils::now();
+        MessageEvent_out->sendMessage(file_event);
+        dataFile_out->pushPacket(sca_filename.c_str(), tstamp, true, stream_id.c_str());
 
-		file_to_struct_mapping.erase(curFileDescIter);
-		curFileDescIter = file_to_struct_mapping.end();
-		return true;
-	}
-	return false;
+        file_to_struct_mapping.erase(curFileDescIter);
+        curFileDescIter = file_to_struct_mapping.end();
+        return true;
+    }
+    return false;
 }
 
 std::string FileWriter_i::stream_to_basename(const std::string & stream_id, const BULKIO::StreamSRI& sri, const BULKIO::PrecisionUTCTime &_T, const std::string & extension, const std::string & dt) {
@@ -754,34 +754,34 @@ std::string FileWriter_i::stream_to_basename(const std::string & stream_id, cons
     std::string chanrf_hz_str = "";
 
     for (size_t i = 0; i < sri.keywords.length(); i++) {
-		std::string search = "%" + std::string(sri.keywords[i].id) + "%";
-		std::string replace = ossie::any_to_string(sri.keywords[i].value);
-		bn = replace_string(bn, search, replace);
-		if (std::string(sri.keywords[i].id) == "COL_RF") {
-			std::ostringstream result;
-			CORBA::Double tmp;
-			sri.keywords[i].value >>= tmp;
-			CORBA::LongLong tmpLL = CORBA::LongLong(tmp);
-			result << tmpLL;
-			colrf_hz_str = std::string(result.str()) + "Hz";
-		}
-		if (std::string(sri.keywords[i].id) == "CHAN_RF") {
-			std::ostringstream result;
-			CORBA::Double tmp;
-			sri.keywords[i].value >>= tmp;
-			CORBA::LongLong tmpLL = CORBA::LongLong(tmp);
-			result << tmpLL;
-			chanrf_hz_str = std::string(result.str()) + "Hz";
-		}
-	}
+        std::string search = "%" + std::string(sri.keywords[i].id) + "%";
+        std::string replace = ossie::any_to_string(sri.keywords[i].value);
+        bn = replace_string(bn, search, replace);
+        if (std::string(sri.keywords[i].id) == "COL_RF") {
+            std::ostringstream result;
+            CORBA::Double tmp;
+            sri.keywords[i].value >>= tmp;
+            CORBA::LongLong tmpLL = CORBA::LongLong(tmp);
+            result << tmpLL;
+            colrf_hz_str = std::string(result.str()) + "Hz";
+        }
+        if (std::string(sri.keywords[i].id) == "CHAN_RF") {
+            std::ostringstream result;
+            CORBA::Double tmp;
+            sri.keywords[i].value >>= tmp;
+            CORBA::LongLong tmpLL = CORBA::LongLong(tmp);
+            result << tmpLL;
+            chanrf_hz_str = std::string(result.str()) + "Hz";
+        }
+    }
 
-	if (!chanrf_hz_str.empty())
-		cf_hz_str = chanrf_hz_str;
-	else if (!colrf_hz_str.empty())
-		cf_hz_str = colrf_hz_str;
-	bn = replace_string(bn, "%CF_HZ%", std::string(cf_hz_str));
-	bn = replace_string(bn, "%COLRF_HZ%", std::string(colrf_hz_str));
-	bn = replace_string(bn, "%CHANRF_HZ%", std::string(chanrf_hz_str));
+    if (!chanrf_hz_str.empty())
+        cf_hz_str = chanrf_hz_str;
+    else if (!colrf_hz_str.empty())
+        cf_hz_str = colrf_hz_str;
+    bn = replace_string(bn, "%CF_HZ%", std::string(cf_hz_str));
+    bn = replace_string(bn, "%COLRF_HZ%", std::string(colrf_hz_str));
+    bn = replace_string(bn, "%CHANRF_HZ%", std::string(chanrf_hz_str));
 
     return bn;
 }
