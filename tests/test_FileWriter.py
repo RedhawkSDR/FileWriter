@@ -21,7 +21,7 @@ import ossie.utils.testing
 import os
 import time
 from omniORB import any
-from ossie.utils import sb
+from ossie.utils import sb, bulkio
 import filecmp
 import struct
 
@@ -528,6 +528,111 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
             os.remove(dataFileIn)
             os.remove(dataFileOut1)
             os.remove(dataFileOut2)
+        
+        print "........ PASSED\n"
+        return
+    
+    
+    def testRecordingCpuTimers(self):
+        #######################################################################
+        # Test multiple recording timers using cpu clock
+        return self.timerTests(pkt_ts=False)
+    
+# TODO - sb.DataSource doesn't produce accurate timestamps, can't test using it    
+#    def testRecordingPktTimers(self):
+#        #######################################################################
+#        # Test multiple recording timers using packet timestamp
+#        return self.timerTests(pkt_ts=True)
+    
+    
+    def timerTests(self,pkt_ts=False):
+        #######################################################################
+        # Test multiple recording timers
+        
+        #Define test files
+        dataFileIn = './data.in'
+        dataFileOut = './data.out'
+        
+        #Create Test Data File if it doesn't exist
+        if not os.path.isfile(dataFileIn):
+            with open(dataFileIn, 'wb') as dataIn:
+                dataIn.write(os.urandom(1024))
+        
+        #Read in Data from Test File
+        size = os.path.getsize(dataFileIn)
+        with open (dataFileIn, 'rb') as dataIn:
+            data = list(struct.unpack('f' * (size/4), dataIn.read(size)))
+
+        #Create Components and Connections
+        comp = sb.launch('../FileWriter.spd.xml')
+        comp.destination_uri = dataFileOut
+        comp.recording_enabled = False
+        
+        source = sb.DataSource(bytesPerPush=64, dataFormat='32f')
+        source.connect(comp,providesPortName='dataFloat_in')
+        
+        # Create timers
+        ts_now = bulkio.bulkio_helpers.createCPUTimestamp()
+        start1_wsec = ts_now.twsec+2.0
+        stop1_wsec = start1_wsec+2.0
+        start2_wsec = stop1_wsec+2.0
+        stop2_wsec = start2_wsec+2.0
+        timer1 = {'recording_enable':True,'use_pkt_timestamp':pkt_ts,'twsec':start1_wsec,'tfsec':0.0}
+        timer2 = {'recording_enable':False,'use_pkt_timestamp':pkt_ts,'twsec':stop1_wsec,'tfsec':0.0}
+        timer3 = {'recording_enable':True,'use_pkt_timestamp':pkt_ts,'twsec':start2_wsec,'tfsec':0.0}
+        timer4 = {'recording_enable':False,'use_pkt_timestamp':pkt_ts,'twsec':stop2_wsec,'tfsec':0.0}
+        timers = [timer1,timer2,timer3,timer4]
+        comp.recording_timer = timers
+        end_ws = stop2_wsec + 3.0
+        
+        #Start Components & Push Data
+        sb.start()
+        ts_now = bulkio.bulkio_helpers.createCPUTimestamp()
+        while ts_now.twsec < end_ws:
+            source.push(data,sampleRate=512) # 1024 samples per push
+            time.sleep(2)
+            ts_now = bulkio.bulkio_helpers.createCPUTimestamp()
+        sb.stop()
+
+        #Check that the input and output files are the same
+        try:
+            self.assertEqual(filecmp.cmp(dataFileIn, dataFileOut), True)
+        except self.failureException as e:
+            # unpacked bytes may be NaN, which could cause test to fail unnecessarily
+            size = os.path.getsize(dataFileOut)
+            with open (dataFileOut, 'rb') as dataOut:
+                data2 = list(struct.unpack('f' * (size/4), dataOut.read(size)))
+            for a,b in zip(data,data2):
+                if a!=b:
+                    if a!=a and b!=b:
+                        print "Difference in NaN format, ignoring..."
+                    else:
+                        print "FAILED:",a,"!=",b
+                        raise e
+        try:
+            self.assertEqual(filecmp.cmp(dataFileIn, dataFileOut+'-1'), True)
+        except self.failureException as e:
+            # unpacked bytes may be NaN, which could cause test to fail unnecessarily
+            size = os.path.getsize(dataFileOut+'-1')
+            with open (dataFileOut+'-1', 'rb') as dataOut:
+                data2 = list(struct.unpack('f' * (size/4), dataOut.read(size)))
+            for a,b in zip(data,data2):
+                if a!=b:
+                    if a!=a and b!=b:
+                        print "Difference in NaN format, ignoring..."
+                    else:
+                        print "FAILED:",a,"!=",b
+                        raise e
+
+        #Release the components and remove the generated files
+        finally:
+            comp.releaseObject()
+            source.releaseObject()
+            os.remove(dataFileIn)
+            os.remove(dataFileOut)
+            os.remove(dataFileOut+'-1')
+        
+        #TODO - validate timestamps, perhaps using BLUEFILEs
         
         print "........ PASSED\n"
         return
