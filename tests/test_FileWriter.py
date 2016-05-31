@@ -596,25 +596,14 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
 
         #Check that the input and output files are the same
         try:
-            self.assertEqual(filecmp.cmp(dataFileIn, dataFileOut), True)
+            outfile = dataFileOut
+            self.assertEqual(filecmp.cmp(dataFileIn, outfile), True)
+            outfile = dataFileOut+'-1'
+            self.assertEqual(filecmp.cmp(dataFileIn, outfile), True)
         except self.failureException as e:
             # unpacked bytes may be NaN, which could cause test to fail unnecessarily
-            size = os.path.getsize(dataFileOut)
-            with open (dataFileOut, 'rb') as dataOut:
-                data2 = list(struct.unpack('f' * (size/4), dataOut.read(size)))
-            for a,b in zip(data,data2):
-                if a!=b:
-                    if a!=a and b!=b:
-                        print "Difference in NaN format, ignoring..."
-                    else:
-                        print "FAILED:",a,"!=",b
-                        raise e
-        try:
-            self.assertEqual(filecmp.cmp(dataFileIn, dataFileOut+'-1'), True)
-        except self.failureException as e:
-            # unpacked bytes may be NaN, which could cause test to fail unnecessarily
-            size = os.path.getsize(dataFileOut+'-1')
-            with open (dataFileOut+'-1', 'rb') as dataOut:
+            size = os.path.getsize(outfile)
+            with open (outfile, 'rb') as dataOut:
                 data2 = list(struct.unpack('f' * (size/4), dataOut.read(size)))
             for a,b in zip(data,data2):
                 if a!=b:
