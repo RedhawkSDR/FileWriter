@@ -539,10 +539,10 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         return self.timerTests(pkt_ts=False)
     
 # TODO - sb.DataSource doesn't produce accurate timestamps, can't test using it    
-#    def testRecordingPktTimers(self):
-#        #######################################################################
-#        # Test multiple recording timers using packet timestamp
-#        return self.timerTests(pkt_ts=True)
+    def testRecordingPktTimers(self):
+        #######################################################################
+        # Test multiple recording timers using packet timestamp
+        return self.timerTests(pkt_ts=True)
     
     
     def timerTests(self,pkt_ts=False):
@@ -552,6 +552,10 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         #Define test files
         dataFileIn = './data.in'
         dataFileOut = './data.out'
+        resultsFileOut = './results.out'
+        sample_rate = 128.0
+        start_delay = 0.5
+        stop_delay = 2.0
         
         #Create Test Data File if it doesn't exist
         if not os.path.isfile(dataFileIn):
@@ -562,57 +566,107 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         size = os.path.getsize(dataFileIn)
         with open (dataFileIn, 'rb') as dataIn:
             data = list(struct.unpack('f' * (size/4), dataIn.read(size)))
-
+        
         #Create Components and Connections
         comp = sb.launch('../FileWriter.spd.xml')
         comp.destination_uri = dataFileOut
         comp.recording_enabled = False
         
-        source = sb.DataSource(bytesPerPush=64, dataFormat='32f')
-        source.connect(comp,providesPortName='dataFloat_in')
-        
         # Create timers
-        ts_now = bulkio.bulkio_helpers.createCPUTimestamp()
-        start1_wsec = ts_now.twsec+2.0
+        ts_start = bulkio.bulkio_helpers.createCPUTimestamp()
+        start1_wsec = ts_start.twsec+2.0
         stop1_wsec = start1_wsec+2.0
         start2_wsec = stop1_wsec+2.0
         stop2_wsec = start2_wsec+2.0
-        timer1 = {'recording_enable':True,'use_pkt_timestamp':pkt_ts,'twsec':start1_wsec,'tfsec':0.0}
-        timer2 = {'recording_enable':False,'use_pkt_timestamp':pkt_ts,'twsec':stop1_wsec,'tfsec':0.0}
-        timer3 = {'recording_enable':True,'use_pkt_timestamp':pkt_ts,'twsec':start2_wsec,'tfsec':0.0}
-        timer4 = {'recording_enable':False,'use_pkt_timestamp':pkt_ts,'twsec':stop2_wsec,'tfsec':0.0}
-        timers = [timer1,timer2,timer3,timer4]
+        timers = [{'recording_enable':True,'use_pkt_timestamp':pkt_ts,'twsec':start1_wsec,'tfsec':ts_start.tfsec},
+                  {'recording_enable':False,'use_pkt_timestamp':pkt_ts,'twsec':stop1_wsec,'tfsec':ts_start.tfsec},
+                  {'recording_enable':True,'use_pkt_timestamp':pkt_ts,'twsec':start2_wsec,'tfsec':ts_start.tfsec},
+                  {'recording_enable':False,'use_pkt_timestamp':pkt_ts,'twsec':stop2_wsec,'tfsec':ts_start.tfsec}]
+        #print timers
         comp.recording_timer = timers
-        end_ws = stop2_wsec + 3.0
+        
+        source = sb.DataSource(bytesPerPush=64.0, dataFormat='32f', startTime=ts_start.twsec+ts_start.tfsec+start_delay)
+        source.connect(comp,providesPortName='dataFloat_in')
+        
+        # results will be shifted due to start_delay
+        results_offset = int((start1_wsec-ts_start.twsec-start_delay)*sample_rate)
         
         #Start Components & Push Data
         sb.start()
-        ts_now = bulkio.bulkio_helpers.createCPUTimestamp()
-        while ts_now.twsec < end_ws:
-            source.push(data,sampleRate=512) # 1024 samples per push
+        if pkt_ts:
+            source.push(data*5,sampleRate=sample_rate) # 5*256 samples per push
             time.sleep(2)
+        else:
+            # meter to actual sample rate since based on cpu time
+            end_ws = stop2_wsec + stop_delay
+            num_samps = 16
+            loop_delay = num_samps/sample_rate
+            idx = results_offset # necessary to achieve same results as pkt_ts, accounting for start_delay
             ts_now = bulkio.bulkio_helpers.createCPUTimestamp()
+            while ts_now.twsec < end_ws:
+                source.push(data[idx:idx+num_samps],sampleRate=sample_rate) # 256 samples per push
+                idx=(idx+num_samps)%len(data)
+                time.sleep(loop_delay)
+                ts_now = bulkio.bulkio_helpers.createCPUTimestamp()
         sb.stop()
+        
+        #Create Test Results Files
+        results = data[results_offset:]+data[:results_offset] 
+        with open(resultsFileOut, 'wb') as dataIn:
+            dataIn.write(struct.pack('f'*len(results), *results))
 
         #Check that the input and output files are the same
         try:
-            outfile = dataFileOut
-            self.assertEqual(filecmp.cmp(dataFileIn, outfile), True)
-            outfile = dataFileOut+'-1'
-            self.assertEqual(filecmp.cmp(dataFileIn, outfile), True)
-        except self.failureException as e:
-            # unpacked bytes may be NaN, which could cause test to fail unnecessarily
-            size = os.path.getsize(outfile)
-            with open (outfile, 'rb') as dataOut:
-                data2 = list(struct.unpack('f' * (size/4), dataOut.read(size)))
-            for a,b in zip(data,data2):
-                if a!=b:
-                    if a!=a and b!=b:
-                        print "Difference in NaN format, ignoring..."
-                    else:
-                        print "FAILED:",a,"!=",b
+            try:
+                self.assertEqual(filecmp.cmp(resultsFileOut, dataFileOut), True)
+            except self.failureException as e:
+                # unpacked bytes may be NaN, which could cause test to fail unnecessarily
+                size1 = os.path.getsize(dataFileOut)
+                with open (dataFileOut, 'rb') as dataOut1:
+                    data1 = list(struct.unpack('f' * (size1/4), dataOut1.read(size1)))
+                
+                offset1 = results.index(max(results))-data1.index(max(data1))
+                #print 'offset1 is', offset1
+                if offset1 != 0:
+                    if abs(offset1) > num_samps: # allow it to be off by one data push
+                        print "FAILED: offset1 =",offset1
                         raise e
-
+                    shifted_res1 = results[offset1:]+results[:offset1]
+                else:
+                    shifted_res1 = results
+                for a,b in zip(shifted_res1,data1):
+                    if a!=b:
+                        if a!=a and b!=b:
+                            print "Difference in NaN format, ignoring..."
+                        else:
+                            print "1st FAILED:",a,"!=",b
+                            raise e
+            try:
+                self.assertEqual(filecmp.cmp(resultsFileOut, dataFileOut+'-1'), True)
+            except self.failureException as e:
+                # unpacked bytes may be NaN, which could cause test to fail unnecessarily
+                size2 = os.path.getsize(dataFileOut+'-1')
+                with open (dataFileOut+'-1', 'rb') as dataOut:
+                    data2 = list(struct.unpack('f' * (size2/4), dataOut.read(size2)))
+            
+                offset2 = results.index(max(results))-data2.index(max(data2))
+                #print 'offset2 is', offset2
+                if offset2 != 0:
+                    if abs(offset2) > num_samps: # allow it to be off by one data push
+                        print "FAILED: offset2 =",offset2
+                        raise e
+                    shifted_res2 = results[offset2:]+results[:offset2]
+                else:
+                    shifted_res2 = results
+                for a,b in zip(shifted_res2,data2):
+                    if a!=b:
+                        if a!=a and b!=b:
+                            print "Difference in NaN format, ignoring..."
+                        else:
+                            print "2nd FAILED:",a,"!=",b
+                            raise e
+        except:
+            raise e
         #Release the components and remove the generated files
         finally:
             comp.releaseObject()
@@ -620,6 +674,7 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
             os.remove(dataFileIn)
             os.remove(dataFileOut)
             os.remove(dataFileOut+'-1')
+            os.remove(resultsFileOut)
         
         #TODO - validate timestamps, perhaps using BLUEFILEs
         
