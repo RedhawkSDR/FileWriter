@@ -532,18 +532,17 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         print "........ PASSED\n"
         return
     
-    
     def testRecordingCpuTimers(self):
         #######################################################################
         # Test multiple recording timers using cpu clock
+        print "\n**TESTING TIMERS w/ CPU TIMESTAMP"
         return self.timerTests(pkt_ts=False)
     
-# TODO - sb.DataSource doesn't produce accurate timestamps, can't test using it    
     def testRecordingPktTimers(self):
         #######################################################################
         # Test multiple recording timers using packet timestamp
+        print "\n**TESTING TIMERS w/ PACKET TIMESTAMP"
         return self.timerTests(pkt_ts=True)
-    
     
     def timerTests(self,pkt_ts=False):
         #######################################################################
