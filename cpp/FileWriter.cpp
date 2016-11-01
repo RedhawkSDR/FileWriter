@@ -821,12 +821,24 @@ std::pair<blue::HeaderControlBlock, std::vector<char> > FileWriter_i::createBlue
     blue::ExtendedHeader ecb;
 
 
-    hcb.setTypeCode(1000);
-    hcb.setXdelta(sri.xdelta);
-    hcb.setXunits(sri.xunits);
-    hcb.setXstart(sri.xstart);
+    if ( sri.subsize == 0) {
+        hcb.setTypeCode(1000);
+        hcb.setXstart(sri.xstart);
+        hcb.setXdelta(sri.xdelta);
+        hcb.setXunits(sri.xunits);
+    } else {
+        hcb.setTypeCode(2000);
+        hcb.setXstart(sri.xstart);
+        hcb.setXdelta(sri.xdelta);
+        hcb.setXunits(sri.xunits);
+        hcb.setColRecs(sri.subsize);
+        hcb.setColStart(sri.ystart);
+        hcb.setColDelta(sri.ydelta);
+        hcb.setColUnits(sri.yunits);
+    }
+
     hcb.setFormatCode(midasType);
-    hcb.setTimeCode(start_time + long(631152000));
+    hcb.setTimeCode(start_time);
     hcb.setDataSize(datasize - BLUEFILE_BLOCK_SIZE);
     hcb.setHeaderRep(blue::IEEE); // Note: avoid EEEI headers (EEEI datasets are ok)
 
@@ -844,7 +856,7 @@ std::pair<blue::HeaderControlBlock, std::vector<char> > FileWriter_i::createBlue
             continue;
         CORBA::TCKind val_kind = sri.keywords[i].value.type()->kind();
         if (val_kind == CORBA::tk_short) {
-            short tmp;
+            CORBA::Short tmp;
             sri.keywords[i].value >>= tmp;
             blue::Keyword kw(blue::INTEGER, id.c_str());
             kw.push();
@@ -852,7 +864,7 @@ std::pair<blue::HeaderControlBlock, std::vector<char> > FileWriter_i::createBlue
             kw.setUnits(blue::NOT_APPLICABLE);
             midasKeywords.insert(kw);
         } else if (val_kind == CORBA::tk_long) {
-            long tmp;
+        	CORBA::Long tmp;
             sri.keywords[i].value >>= tmp;
             blue::Keyword kw(blue::LONG, id.c_str());
             kw.push();
@@ -967,23 +979,24 @@ std::pair<blue::HeaderControlBlock, std::vector<char> > FileWriter_i::createBlue
     }
 
     //ExtendedHeader::close_()
-    char *bb = &(buff[0]);
+    //char *bb = &(buff[0]);
     const int NN = static_cast<int> (buff.size());
     // Roundup(NN, 512); // New buffer size padded to a 512 boundary.
     int newsize = NN % 512 ? (NN / 512 + 1)*512 : NN;
     int newpad = newsize - NN; // Number of bytes to be added.
 
     if (newpad > 0) {
-        blue::midaskeystruct *mks = reinterpret_cast<blue::midaskeystruct*> (bb + lastkeyword);
-        mks->next_offset += newpad;
-        mks->non_data_len += newpad;
+        //blue::midaskeystruct *mks = reinterpret_cast<blue::midaskeystruct*> (bb + lastkeyword);
+        //mks->next_offset += newpad;
+        //mks->non_data_len += newpad;
 
         buff.insert(buff.end(), newpad, 0);
     }
     size_t startBlock = size_t(ceil(double(datasize) / double(BLUEFILE_BLOCK_SIZE)));
     size_t numZeros = startBlock * BLUEFILE_BLOCK_SIZE - datasize;
     hcb.setExtStart(startBlock);
-    hcb.setExtSize(static_cast<int> (buff.size()));
+    //hcb.setExtSize(static_cast<int> (buff.size()));
+    hcb.setExtSize(static_cast<int> (NN));
     buff.insert(buff.begin(), numZeros, 0);
     return std::make_pair(hcb, buff);
 

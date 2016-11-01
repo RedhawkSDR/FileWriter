@@ -22,8 +22,268 @@ import os
 import time
 from omniORB import any
 from ossie.utils import sb, bulkio
+from ossie.cf import CF
 import filecmp
 import struct
+from ossie.properties import props_from_dict, props_to_dict
+from ossie.utils.bluefile import bluefile, bluefile_helpers
+from bulkio.bulkioInterfaces import BULKIO, BULKIO__POA
+from bulkio.sri import create as createSri
+from bulkio.timestamp import create as createTs
+import numpy
+
+
+###############################################################
+# FIXES TO bluefile_helpers.py
+###############################################################
+
+def hdr_to_sri(hdr, stream_id):
+    """
+    Generates a StreamSRI object based on the information contained in the
+    X-Midas header file.
+    
+    Inputs:
+        <hdr>    The X-Midas header file
+        <stream_id>    The stream id
+    
+    Output:
+        Returns a BULKIO.StreamSRI object 
+    """
+    hversion = 1  
+    xstart = hdr['xstart']
+    xdelta = hdr['xdelta']
+    xunits = hdr['xunits']
+    data_type = hdr['type']
+    data_format = hdr['format']
+
+    
+    # The subsize needs to be 0 if one-dimensional or > 0 otherwise so 
+    # using the data type to find out
+    if data_type == 1000:
+        subsize = 0
+        ystart = 0
+        ydelta = 0
+        yunits = 0  # FIXME added yunits
+    else:
+        #subsize = str(data_type)[0] # FIXME replaced this with line below
+        subsize = hdr['subsize']
+        ystart = hdr['ystart']  
+        ydelta = hdr['ydelta']  
+        yunits = hdr['yunits']  # FIXME added yunits
+    
+    # The mode is based on the data type: 0 if is Scalar or 1 if it is 
+    # Complex.  Setting it to -1 for any other type
+    if data_format.startswith('S'):
+        mode = 0
+    elif data_format.startswith('C'):
+        mode = 1
+    else:
+        mode = -1            
+    
+    kwds = []        
+    
+    # Getting all the items in the extended header
+    if hdr.has_key('ext_header'):
+        ext_hdr = hdr['ext_header']
+        if isinstance(ext_hdr, dict):            
+            for key, value in ext_hdr.iteritems():
+                # WARNING: CORBA types are hard-coded through here
+                dt = CF.DataType(key, ossie.properties.to_tc_value(item[1], 'long'))
+                kwds.append(dt)
+        elif isinstance(ext_hdr, list):
+            for item in ext_hdr:
+                try:
+                    dt = CF.DataType(item[0], ossie.properties.to_tc_value(item[1], 'long'))
+                    kwds.append(dt)
+                except:
+                    continue
+            
+    return BULKIO.StreamSRI(hversion, xstart, xdelta, xunits, 
+                            subsize, ystart, ydelta, yunits, # FIXME - changed this to return yunits
+                            mode, stream_id, True, kwds)
+    
+bluefile_helpers.hdr_to_sri = hdr_to_sri
+    
+def sri_to_hdr(sri, data_type, data_format):
+    """
+    Generates an X-Midas header file from the SRI information.
+    
+    Inputs:
+        <sri>          The BULKIO.StreamSRI object
+        <data_type>    The X-Midas file type (1000, 2000, etc)
+        <data_format>  The X-Midas data format (SD, SF, CF, etc)
+    
+    Output:
+        Returns an X-Midas header file 
+    """
+    kwds = {}
+    
+    kwds['xstart'] = sri.xstart
+    kwds['xdelta'] = sri.xdelta
+    kwds['xunits'] = sri.xunits
+    
+    # FIXME: Slight hack - bluefile.py T1000 adjunct header has a few additional fields.
+    # One field is 'fill3' and has a default value of 1.0. BLUE 1.1 doesn't have
+    # that field defined, and the memory at that offset (32) is zero filled (padded).
+    # Here we tell the input file to default to 0.0 such that it will match FW output.
+    kwds['fill3'] = 0.0
+
+    kwds['subsize'] = sri.subsize # FIXME - THIS is added to fix function
+
+    kwds['ystart'] = sri.ystart
+    kwds['ydelta'] = sri.ydelta
+    kwds['yunits'] = sri.yunits
+    
+    kwds['format'] = data_format
+    kwds['type'] = data_type
+    
+    ext_hdr = sri.keywords
+    if len(ext_hdr) > 0:
+        items = []
+        for item in ext_hdr:
+            items.append((item.id, item.value.value()))
+        
+        kwds['ext_header'] = items
+        
+    return bluefile.header(**kwds)
+
+bluefile_helpers.sri_to_hdr = sri_to_hdr
+
+
+def bluefile_helpers_BlueFileWriter_pushPacket(self, data, ts, EOS, stream_id):
+        """
+        Pushes data to the file.
+        
+        Input:
+            <data>        The actual data to write to the file
+            <ts>          The timestamp
+            <EOS>         Flag indicating if this is the End Of the Stream
+            <stream_id>   The name of the file
+        """
+        self.port_lock.acquire()
+        if EOS:
+            self.gotEOS = True
+            self.eos_cond.notifyAll()
+        else:
+            self.gotEOS = False
+        try:
+            if self.header and self.header['format'][1] == 'B':
+                # convert back from string to array of 8-bit integers
+                data = numpy.fromstring(data, numpy.int8)
+
+            # If complex data, need to convert data back from array of scalar values
+            # to some form of complex values
+            if self.header and self.header['format'][0] == 'C':
+                # float and double are handled by numpy
+                # each array element is a single complex value
+                if self.header['format'][1] in ('F', 'D'):
+                    data = bulkio_helpers.bulkioComplexToPythonComplexList(data)
+                # other data types are not handled by numpy
+                # each element is two value array representing real and imaginary values
+                # if data is also framed, wait to reshape everything at once
+                elif self.header['subsize'] == 0: # FIXME - this is changed
+                    # Need to rehape the data into complex value pairs
+                    data = numpy.reshape(data,(-1,2))
+
+            # FIXME - the entire subsize framing section is new
+            # If framed data, need to frame the data according to subsize
+            if self.header and self.header['subsize'] != 0:
+                # If scalar or single complex values, just frame it
+                if self.header['format'][0] != 'C' or  self.header['format'][1] in ('F', 'D'):
+                    data = numpy.reshape(data,(-1, int(self.header['subsize'])))
+                # otherwise, frame and pair as complex values
+                else:
+                    data = numpy.reshape(data,(-1, int(self.header['subsize']), 2))
+
+            bluefile.write(self.outFile, hdr=None, data=data, 
+                       append=1)     
+        finally:
+            self.port_lock.release()
+            
+bluefile_helpers.BlueFileWriter.pushPacket = bluefile_helpers_BlueFileWriter_pushPacket
+
+def bluefile_helpers_BlueFileReader_run(self, infile, pktsize=1024, streamID=None):
+        """
+        Pushes the data through the connected port.  Each packet of data 
+        contains no more than pktsize elements.  Once all the elements have 
+        been sent, the method sends an empty list with the EOS set to True to 
+        indicate the end of the stream.
+        
+        Inputs:
+            <infile>     The name of the X-Midas file containing the data 
+                         to push
+            <pktsize>    The maximum number of elements to send on each push
+            <streamID>   The stream ID to be used, if None, then it defaults to filename 
+        """        
+        hdr, data = bluefile.read(infile, list)
+        # generates a new SRI based on the header of the file
+        path, stream_id = os.path.split(infile)
+        if streamID == None:
+            sri = hdr_to_sri(hdr, stream_id)
+        else:
+            sri = hdr_to_sri(hdr, streamID)
+        self.pushSRI(sri)
+        
+        start = 0           # stores the start of the packet
+        end = start         # stores the end of the packet
+
+        if hdr['format'].startswith('C'):
+            #data = data.flatten() # FIXME: replaced this line with below
+            data = numpy.reshape(data,(-1,)) # flatten data
+            if hdr['format'].endswith('F'):
+                data = data.view(float32)
+            elif hdr['format'].endswith('D'):
+                data = data.view(float64)
+        
+        # FIXME: added this section
+        if 'subsize' in hdr and hdr['subsize'] != 0:
+            data = numpy.reshape(data,(-1,)) # flatten data
+
+        sz = len(data)      
+        self.done = False
+        
+        # Use midas header timecode to set time of first sample
+        # NOTE: midas time is seconds since Jan. 1 1950
+        #       Redhawk time is seconds since Jan. 1 1970
+        currentSampleTime = 0.0
+        if hdr.has_key('timecode'):
+            # Set sample time to seconds since Jan. 1 1970 
+            currentSampleTime = hdr['timecode'] - long(631152000)
+            if currentSampleTime < 0:
+                currentSampleTime = 0.0
+      
+        while not self.done:
+            chunk = start + pktsize
+            # if the next chunk is greater than the file, then grab remaining
+            # only, otherwise grab a whole packet size
+            if chunk > sz:
+                end = sz
+                self.done = True
+            else:
+                end = chunk
+            
+            dataset = data[start:end]
+            
+            # X-Midas returns an array, so we need to generate a list
+            if hdr['format'].endswith('B'):
+                d = dataset.tostring()
+            else:
+                d = dataset.tolist()
+            start = end
+            
+            T = BULKIO.PrecisionUTCTime(BULKIO.TCM_CPU, BULKIO.TCS_VALID, 0.0, int(currentSampleTime), currentSampleTime - int(currentSampleTime))
+            self.pushPacket(d, T, False, sri.streamID)
+            dataSize = len(d)
+            # TODO FIXME - this only works for TYPE 1000 data. Workaround (for now) is to size pktsize large to avoid chunks
+            sampleRate = 1.0/sri.xdelta
+            currentSampleTime = currentSampleTime + dataSize/sampleRate
+        T = BULKIO.PrecisionUTCTime(BULKIO.TCM_CPU, BULKIO.TCS_VALID, 0.0, int(currentSampleTime), currentSampleTime - int(currentSampleTime))
+        if hdr['format'].endswith('B'):
+            self.pushPacket('', T, True, sri.streamID)
+        else: 
+            self.pushPacket([], T, True, sri.streamID)
+
+bluefile_helpers.BlueFileReader.run = bluefile_helpers_BlueFileReader_run
 
 class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
     """Test for all resource implementations in FileWriter"""
@@ -235,6 +495,233 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         source.releaseObject()
         os.remove(dataFileIn)
         os.remove(dataFileOut)
+        
+        print "........ PASSED\n"
+        return
+    
+    def testBlue1000ShortPort(self):
+        #######################################################################
+        # Test Bluefile Type 1000 SHORT Functionality
+        print "\n**TESTING TYPE 1000 BLUEFILE + SHORT PORT"
+        
+        #Define test files
+        dataFileIn = './bluefile.in'
+        dataFileOut = './bluefile.out'
+        
+        sid = 'bluefileShort'
+        
+        #Create Test Data File if it doesn't exist
+        if not os.path.isfile(dataFileIn):
+            tmpSink = bluefile_helpers.BlueFileWriter(dataFileIn, BULKIO__POA.dataShort)
+            tmpSink.start()
+            srate = 5e3 # 5 kHz
+            cxmode = 1 # complex
+            kws = props_from_dict({'TEST_KW':1234})
+            tmpSri = BULKIO.StreamSRI(hversion=1,
+                                      xstart=0.0,
+                                      xdelta= 1.0/srate, 
+                                      xunits=1,
+                                      subsize=0,
+                                      ystart=0.0,
+                                      ydelta=0.0,
+                                      yunits=0,
+                                      mode=cxmode,
+                                      streamID=sid,
+                                      blocking=False,
+                                      keywords=kws)
+            tmpSink.pushSRI(tmpSri)
+            tmpTs = createTs()
+            tmpData = range(0, 1024*2) # double number of samples to account for complex pairs
+            tmpSink.pushPacket(tmpData, tmpTs, True, 'bluefileShort')
+            
+        #Read in Data from Test File
+        #hdr, d = bluefile.read(dataFileIn, dict)
+        #data = list(numpy.reshape(d,(-1,))) # flatten data
+        #sri = hdr_to_sri(hdr, sid)
+
+        #Create Components and Connections
+        comp = sb.launch('../FileWriter.spd.xml')
+        comp.destination_uri = dataFileOut
+        comp.file_format = 'BLUEFILE'
+        comp.advanced_properties.existing_file = 'TRUNCATE'
+        
+        #Create BlueFileReader
+        source = bluefile_helpers.BlueFileReader(BULKIO__POA.dataShort)
+        source.connectPort(comp.getPort('dataShort_in'), 'conn_id1')
+        
+        #Start Components & Push Data
+        sb.start()
+        source.run(dataFileIn, streamID=sid, pktsize=4096) # but in BlueFileReader if sending more than one "packet", so size it large
+        time.sleep(2)
+        sb.stop()
+
+        #Check that the input and output files are the same
+        try:
+            self.assertEqual(filecmp.cmp(dataFileIn, dataFileOut), True)
+        except self.failureException as e:
+            comp.releaseObject()
+            #source.releaseObject() - this has no releaseObject function
+            
+            # DEBUG
+            if 0:
+                from pprint import pprint as pp
+                #Read in Data from Test Files
+                hdr1, d1 = bluefile.read(dataFileIn, dict)
+                hdr2, d2 = bluefile.read(dataFileOut, dict)
+                
+                print_hdrs = False
+                if hdr1.keys() != hdr2.keys():
+                    print_hdrs = True
+                else:
+                    for key in hdr1.keys():
+                        if hdr1[key] != hdr2[key]:
+                            print "HCB['%s'] in: %s  out: %s"%(key,hdr1[key],hdr2[key])
+                            if key != 'file_name':
+                                print_hdrs = True
+                if print_hdrs:
+                    print 'DEBUG - input header:'
+                    pp(hdr1)
+                    print 'DEBUG - output header:'
+                    pp(hdr2)
+                
+                print 'DEBUG - len(input_data)=%s - len(input_data[0])=%s'%(len(d1),len(d1[0]))
+                print 'DEBUG - len(output_data)=%s - len(output_data[0])=%s'%(len(d2),len(d2[0]))
+                data1 = list(numpy.reshape(d1,(-1,))) # flatten data
+                data2 = list(numpy.reshape(d2,(-1,))) # flatten data
+                print 'DEBUG - len(input_data)=%s'%(len(data1))
+                print 'DEBUG - len(output_data)=%s'%(len(data2))
+                
+                raise e
+            
+            try: os.remove(dataFileIn)
+            except: pass
+            try: os.remove(dataFileOut)
+            except: pass
+            raise e
+
+        #Release the components and remove the generated files
+        comp.releaseObject()
+        #source.releaseObject() - this has no releaseObject function
+        try: os.remove(dataFileIn)
+        except: pass
+        try: os.remove(dataFileOut)
+        except: pass
+        
+        print "........ PASSED\n"
+        return
+    
+    def testBlue2000ShortPort(self):
+        #######################################################################
+        # Test Bluefile Type 2000 SHORT Functionality
+        print "\n**TESTING TYPE 2000 BLUEFILE + SHORT PORT"
+        
+        #Define test files
+        dataFileIn = './bluefile.in'
+        dataFileOut = './bluefile.out'
+        
+        sid = 'bluefileShort'
+        
+        #Create Test Data File if it doesn't exist
+        if not os.path.isfile(dataFileIn):
+            tmpSink = bluefile_helpers.BlueFileWriter(dataFileIn, BULKIO__POA.dataShort)
+            tmpSink.start()
+            srate = 5e3 # 5 kHz
+            cxmode = 1 # complex
+            framesize = 64 # 64 complex sample frames
+            frames = 16 # 16 frames (total 1024 complex samples, 2048 total short samples)
+            kws = props_from_dict({'TEST_KW':1234})
+            tmpSri = BULKIO.StreamSRI(hversion=1,
+                                      xstart=-1.0*srate/2.0,
+                                      xdelta= srate/framesize, 
+                                      xunits=3,
+                                      subsize=framesize,
+                                      ystart=0.0,
+                                      ydelta=framesize/srate,
+                                      yunits=1,
+                                      mode=cxmode,
+                                      streamID=sid,
+                                      blocking=False,
+                                      keywords=kws)
+            tmpSink.pushSRI(tmpSri)
+            tmpTs = createTs()
+            tmpData = []
+            for i in xrange(frames):
+                #tmpData.append(range(i,i+framesize*2)) # this would create framed data, but we need flat data
+                tmpData.extend(range(i,i+framesize*2)) # double number of samples to account for complex pairs
+            tmpSink.pushPacket(tmpData, tmpTs, True, 'bluefileShort')
+            
+        #Read in Data from Test File
+        #hdr, d = bluefile.read(dataFileIn, dict)
+        #data = list(numpy.reshape(d,(-1,))) # flatten data
+        #sri = hdr_to_sri(hdr, sid)
+
+        #Create Components and Connections
+        comp = sb.launch('../FileWriter.spd.xml')
+        comp.destination_uri = dataFileOut
+        comp.file_format = 'BLUEFILE'
+        comp.advanced_properties.existing_file = 'TRUNCATE'
+        
+        #Create BlueFileReader
+        source = bluefile_helpers.BlueFileReader(BULKIO__POA.dataShort)
+        source.connectPort(comp.getPort('dataShort_in'), 'conn_id1')
+        
+        #Start Components & Push Data
+        sb.start()
+        source.run(dataFileIn, streamID=sid, pktsize=4096) # but in BlueFileReader if sending more than one "packet", so size it large
+        time.sleep(2)
+        sb.stop()
+
+        #Check that the input and output files are the same
+        try:
+            self.assertEqual(filecmp.cmp(dataFileIn, dataFileOut), True)
+        except self.failureException as e:
+            comp.releaseObject()
+            #source.releaseObject() - this has no releaseObject function
+            
+            # DEBUG
+            if 0:
+                from pprint import pprint as pp
+                #Read in Data from Test Files
+                hdr1, d1 = bluefile.read(dataFileIn, dict)
+                hdr2, d2 = bluefile.read(dataFileOut, dict)
+                
+                print_hdrs = False
+                if hdr1.keys() != hdr2.keys():
+                    print_hdrs = True
+                else:
+                    for key in hdr1.keys():
+                        if hdr1[key] != hdr2[key]:
+                            print "HCB['%s'] in: %s  out: %s"%(key,hdr1[key],hdr2[key])
+                            if key != 'file_name':
+                                print_hdrs = True
+                if print_hdrs:
+                    print 'DEBUG - input header:'
+                    pp(hdr1)
+                    print 'DEBUG - output header:'
+                    pp(hdr2)
+                
+                print 'DEBUG - len(input_data)=%s - len(input_data[0])=%s'%(len(d1),len(d1[0]))
+                print 'DEBUG - len(output_data)=%s - len(output_data[0])=%s'%(len(d2),len(d2[0]))
+                data1 = list(numpy.reshape(d1,(-1,))) # flatten data
+                data2 = list(numpy.reshape(d2,(-1,))) # flatten data
+                print 'DEBUG - len(input_data)=%s'%(len(data1))
+                print 'DEBUG - len(output_data)=%s'%(len(data2))
+                
+                raise e
+            
+            try: os.remove(dataFileIn)
+            except: pass
+            try: os.remove(dataFileOut)
+            except: pass
+            raise e
+
+        #Release the components and remove the generated files
+        comp.releaseObject()
+        #source.releaseObject() - this has no releaseObject function
+        try: os.remove(dataFileIn)
+        except: pass
+        try: os.remove(dataFileOut)
+        except: pass
         
         print "........ PASSED\n"
         return
