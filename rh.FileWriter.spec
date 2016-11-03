@@ -29,7 +29,7 @@ Prefix:         %{_prefix}
 %define _infodir       %{_prefix}/info
 
 Name:           rh.FileWriter
-Version:        4.0.2
+Version:        4.0.3
 Release:        1%{?dist}
 Summary:        Component %{name}
 
@@ -43,8 +43,8 @@ Requires:       redhawk >= 2.0
 
 BuildRequires:  rh.RedhawkDevUtils-devel >= 4.0
 Requires:       rh.RedhawkDevUtils >= 4.0
-BuildRequires:  rh.blueFileLib-devel >= 2.0
-Requires:       rh.blueFileLib >= 2.0
+BuildRequires:  rh.blueFileLib-devel >= 2.0.1
+Requires:       rh.blueFileLib >= 2.0.1
 
 # Interface requirements
 BuildRequires:  bulkioInterfaces >= 2.0
