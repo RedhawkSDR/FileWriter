@@ -118,6 +118,8 @@ def sri_to_hdr(sri, data_type, data_format):
     """
     kwds = {}
     
+    kwds['timecode'] = 631152000.0 # Default to RH epoch of Jan 1 1970
+    
     kwds['xstart'] = sri.xstart
     kwds['xdelta'] = sri.xdelta
     kwds['xunits'] = sri.xunits
@@ -167,6 +169,11 @@ def bluefile_helpers_BlueFileWriter_pushPacket(self, data, ts, EOS, stream_id):
         else:
             self.gotEOS = False
         try:
+            #if self.header and not self.gotTimecode:
+            if self.header and self.header['timecode'] <= 631152000.0:
+                self.header['timecode'] = ts.twsec+ts.tfsec + long(631152000)
+                bluefile.writeheader(self.outFile, self.header, keepopen=0, ext_header_type=list)
+
             if self.header and self.header['format'][1] == 'B':
                 # convert back from string to array of 8-bit integers
                 data = numpy.fromstring(data, numpy.int8)

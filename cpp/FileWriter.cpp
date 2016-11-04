@@ -838,7 +838,7 @@ std::pair<blue::HeaderControlBlock, std::vector<char> > FileWriter_i::createBlue
     }
 
     hcb.setFormatCode(midasType);
-    hcb.setTimeCode(start_time);
+    hcb.setTimeCode(start_time + long(631152000));
     hcb.setDataSize(datasize - BLUEFILE_BLOCK_SIZE);
     hcb.setHeaderRep(blue::IEEE); // Note: avoid EEEI headers (EEEI datasets are ok)
 
