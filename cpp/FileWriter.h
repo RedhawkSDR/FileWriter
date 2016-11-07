@@ -250,11 +250,11 @@ private:
         else if (typeid(DATA_TYPE) == typeid(char))
             format += "B";
         else if (typeid(DATA_TYPE) == typeid(unsigned short))
-            format += "U";
+            format += "I";
         else if (typeid(DATA_TYPE) == typeid(short))
             format += "I";
         else if (typeid(DATA_TYPE) == typeid(unsigned long))
-            format += "V";
+            format += "L";
         else if (typeid(DATA_TYPE) == typeid(long))
             format += "L";
         else if (typeid(DATA_TYPE) == typeid(unsigned long long))
