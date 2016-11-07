@@ -27,6 +27,7 @@ import filecmp
 import struct
 from ossie.properties import props_from_dict, props_to_dict
 from ossie.utils.bluefile import bluefile, bluefile_helpers
+from ossie.utils.bulkio import bulkio_helpers
 from bulkio.bulkioInterfaces import BULKIO, BULKIO__POA
 from bulkio.sri import create as createSri
 from bulkio.timestamp import create as createTs
@@ -176,7 +177,10 @@ def bluefile_helpers_BlueFileWriter_pushPacket(self, data, ts, EOS, stream_id):
 
             if self.header and self.header['format'][1] == 'B':
                 # convert back from string to array of 8-bit integers
-                data = numpy.fromstring(data, numpy.int8)
+                try: # FIXME - added try/except to handle when data is NOT a string of bytes
+                    data = numpy.fromstring(data, numpy.int8)
+                except TypeError:
+                    data = numpy.array(data, numpy.int8)
 
             # If complex data, need to convert data back from array of scalar values
             # to some form of complex values
@@ -238,9 +242,9 @@ def bluefile_helpers_BlueFileReader_run(self, infile, pktsize=1024, streamID=Non
             #data = data.flatten() # FIXME: replaced this line with below
             data = numpy.reshape(data,(-1,)) # flatten data
             if hdr['format'].endswith('F'):
-                data = data.view(float32)
+                data = data.view(numpy.float32)
             elif hdr['format'].endswith('D'):
-                data = data.view(float64)
+                data = data.view(numpy.float64)
         
         # FIXME: added this section
         if 'subsize' in hdr and hdr['subsize'] != 0:
@@ -402,6 +406,42 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         print "........ PASSED\n"
         return
     
+    def testBlue1000CharPort(self):
+        #######################################################################
+        # Test Bluefile Type 1000 Char Functionality
+        sid = 'bluefileChar'
+        port_poa = BULKIO__POA.dataChar
+        port_name = 'dataChar_in'
+        print "\n**TESTING TYPE 1000 BLUEFILE + CHAR PORT"
+        return self.blue1000PortTests(sid, port_poa, port_name)
+    
+    def testBlue2000CharPort(self):
+        #######################################################################
+        # Test Bluefile Type 2000 Char Functionality
+        sid = 'bluefileChar'
+        port_poa = BULKIO__POA.dataChar
+        port_name = 'dataChar_in'
+        print "\n**TESTING TYPE 2000 BLUEFILE + CHAR PORT"
+        return self.blue2000PortTests(sid, port_poa, port_name)
+    
+    def testBlue1000CharPortCx(self):
+        #######################################################################
+        # Test Bluefile Type 1000 Char Cx Functionality
+        sid = 'bluefileCharCx'
+        port_poa = BULKIO__POA.dataChar
+        port_name = 'dataChar_in'
+        print "\n**TESTING Cx TYPE 1000 BLUEFILE + CHAR PORT"
+        return self.blue1000PortTests(sid, port_poa, port_name, True)
+    
+    def testBlue2000CharPortCx(self):
+        #######################################################################
+        # Test Bluefile Type 2000 Char Functionality
+        sid = 'bluefileCharCx'
+        port_poa = BULKIO__POA.dataChar
+        port_name = 'dataChar_in'
+        print "\n**TESTING Cx TYPE 2000 BLUEFILE + CHAR PORT"
+        return self.blue2000PortTests(sid, port_poa, port_name, True)
+    
     def testOctetPort(self):
         #######################################################################
         # Test OCTET Functionality
@@ -453,6 +493,42 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         
         print "........ PASSED\n"
         return
+    
+    def octetnotsupported_testBlue1000OctetPort(self):
+        #######################################################################
+        # Test Bluefile Type 1000 Octet Functionality
+        sid = 'bluefileOctet'
+        port_poa = BULKIO__POA.dataOctet
+        port_name = 'dataOctet_in'
+        print "\n**TESTING TYPE 1000 BLUEFILE + OCTET PORT"
+        return self.blue1000PortTests(sid, port_poa, port_name)
+    
+    def octetnotsupported_testBlue2000OctetPort(self):
+        #######################################################################
+        # Test Bluefile Type 2000 Octet Functionality
+        sid = 'bluefileOctet'
+        port_poa = BULKIO__POA.dataOctet
+        port_name = 'dataOctet_in'
+        print "\n**TESTING TYPE 2000 BLUEFILE + OCTET PORT"
+        return self.blue2000PortTests(sid, port_poa, port_name)
+    
+    def octetnotsupported_testBlue1000OctetPortCx(self):
+        #######################################################################
+        # Test Bluefile Type 1000 Octet Cx Functionality
+        sid = 'bluefileOctetCx'
+        port_poa = BULKIO__POA.dataOctet
+        port_name = 'dataOctet_in'
+        print "\n**TESTING Cx TYPE 1000 BLUEFILE + OCTET PORT"
+        return self.blue1000PortTests(sid, port_poa, port_name, True)
+    
+    def octetnotsupported_testBlue2000OctetPortCx(self):
+        #######################################################################
+        # Test Bluefile Type 2000 Octet Cx Functionality
+        sid = 'bluefileOctetCx'
+        port_poa = BULKIO__POA.dataOctet
+        port_name = 'dataOctet_in'
+        print "\n**TESTING Cx TYPE 2000 BLUEFILE + OCTET PORT"
+        return self.blue2000PortTests(sid, port_poa, port_name, True)
     
     def testShortPort(self):
         #######################################################################
@@ -509,229 +585,38 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
     def testBlue1000ShortPort(self):
         #######################################################################
         # Test Bluefile Type 1000 SHORT Functionality
-        print "\n**TESTING TYPE 1000 BLUEFILE + SHORT PORT"
-        
-        #Define test files
-        dataFileIn = './bluefile.in'
-        dataFileOut = './bluefile.out'
-        
         sid = 'bluefileShort'
-        
-        #Create Test Data File if it doesn't exist
-        if not os.path.isfile(dataFileIn):
-            tmpSink = bluefile_helpers.BlueFileWriter(dataFileIn, BULKIO__POA.dataShort)
-            tmpSink.start()
-            srate = 5e3 # 5 kHz
-            cxmode = 1 # complex
-            kws = props_from_dict({'TEST_KW':1234})
-            tmpSri = BULKIO.StreamSRI(hversion=1,
-                                      xstart=0.0,
-                                      xdelta= 1.0/srate, 
-                                      xunits=1,
-                                      subsize=0,
-                                      ystart=0.0,
-                                      ydelta=0.0,
-                                      yunits=0,
-                                      mode=cxmode,
-                                      streamID=sid,
-                                      blocking=False,
-                                      keywords=kws)
-            tmpSink.pushSRI(tmpSri)
-            tmpTs = createTs()
-            tmpData = range(0, 1024*2) # double number of samples to account for complex pairs
-            tmpSink.pushPacket(tmpData, tmpTs, True, 'bluefileShort')
-            
-        #Read in Data from Test File
-        #hdr, d = bluefile.read(dataFileIn, dict)
-        #data = list(numpy.reshape(d,(-1,))) # flatten data
-        #sri = hdr_to_sri(hdr, sid)
-
-        #Create Components and Connections
-        comp = sb.launch('../FileWriter.spd.xml')
-        comp.destination_uri = dataFileOut
-        comp.file_format = 'BLUEFILE'
-        comp.advanced_properties.existing_file = 'TRUNCATE'
-        
-        #Create BlueFileReader
-        source = bluefile_helpers.BlueFileReader(BULKIO__POA.dataShort)
-        source.connectPort(comp.getPort('dataShort_in'), 'conn_id1')
-        
-        #Start Components & Push Data
-        sb.start()
-        source.run(dataFileIn, streamID=sid, pktsize=4096) # but in BlueFileReader if sending more than one "packet", so size it large
-        time.sleep(2)
-        sb.stop()
-
-        #Check that the input and output files are the same
-        try:
-            self.assertEqual(filecmp.cmp(dataFileIn, dataFileOut), True)
-        except self.failureException as e:
-            comp.releaseObject()
-            #source.releaseObject() - this has no releaseObject function
-            
-            # DEBUG
-            if 0:
-                from pprint import pprint as pp
-                #Read in Data from Test Files
-                hdr1, d1 = bluefile.read(dataFileIn, dict)
-                hdr2, d2 = bluefile.read(dataFileOut, dict)
-                
-                print_hdrs = False
-                if hdr1.keys() != hdr2.keys():
-                    print_hdrs = True
-                else:
-                    for key in hdr1.keys():
-                        if hdr1[key] != hdr2[key]:
-                            print "HCB['%s'] in: %s  out: %s"%(key,hdr1[key],hdr2[key])
-                            if key != 'file_name':
-                                print_hdrs = True
-                if print_hdrs:
-                    print 'DEBUG - input header:'
-                    pp(hdr1)
-                    print 'DEBUG - output header:'
-                    pp(hdr2)
-                
-                print 'DEBUG - len(input_data)=%s - len(input_data[0])=%s'%(len(d1),len(d1[0]))
-                print 'DEBUG - len(output_data)=%s - len(output_data[0])=%s'%(len(d2),len(d2[0]))
-                data1 = list(numpy.reshape(d1,(-1,))) # flatten data
-                data2 = list(numpy.reshape(d2,(-1,))) # flatten data
-                print 'DEBUG - len(input_data)=%s'%(len(data1))
-                print 'DEBUG - len(output_data)=%s'%(len(data2))
-                
-                raise e
-            
-            try: os.remove(dataFileIn)
-            except: pass
-            try: os.remove(dataFileOut)
-            except: pass
-            raise e
-
-        #Release the components and remove the generated files
-        comp.releaseObject()
-        #source.releaseObject() - this has no releaseObject function
-        try: os.remove(dataFileIn)
-        except: pass
-        try: os.remove(dataFileOut)
-        except: pass
-        
-        print "........ PASSED\n"
-        return
+        port_poa = BULKIO__POA.dataShort
+        port_name = 'dataShort_in'
+        print "\n**TESTING TYPE 1000 BLUEFILE + SHORT PORT"
+        return self.blue1000PortTests(sid, port_poa, port_name)
     
     def testBlue2000ShortPort(self):
         #######################################################################
         # Test Bluefile Type 2000 SHORT Functionality
-        print "\n**TESTING TYPE 2000 BLUEFILE + SHORT PORT"
-        
-        #Define test files
-        dataFileIn = './bluefile.in'
-        dataFileOut = './bluefile.out'
-        
         sid = 'bluefileShort'
-        
-        #Create Test Data File if it doesn't exist
-        if not os.path.isfile(dataFileIn):
-            tmpSink = bluefile_helpers.BlueFileWriter(dataFileIn, BULKIO__POA.dataShort)
-            tmpSink.start()
-            srate = 5e3 # 5 kHz
-            cxmode = 1 # complex
-            framesize = 64 # 64 complex sample frames
-            frames = 16 # 16 frames (total 1024 complex samples, 2048 total short samples)
-            kws = props_from_dict({'TEST_KW':1234})
-            tmpSri = BULKIO.StreamSRI(hversion=1,
-                                      xstart=-1.0*srate/2.0,
-                                      xdelta= srate/framesize, 
-                                      xunits=3,
-                                      subsize=framesize,
-                                      ystart=0.0,
-                                      ydelta=framesize/srate,
-                                      yunits=1,
-                                      mode=cxmode,
-                                      streamID=sid,
-                                      blocking=False,
-                                      keywords=kws)
-            tmpSink.pushSRI(tmpSri)
-            tmpTs = createTs()
-            tmpData = []
-            for i in xrange(frames):
-                #tmpData.append(range(i,i+framesize*2)) # this would create framed data, but we need flat data
-                tmpData.extend(range(i,i+framesize*2)) # double number of samples to account for complex pairs
-            tmpSink.pushPacket(tmpData, tmpTs, True, 'bluefileShort')
-            
-        #Read in Data from Test File
-        #hdr, d = bluefile.read(dataFileIn, dict)
-        #data = list(numpy.reshape(d,(-1,))) # flatten data
-        #sri = hdr_to_sri(hdr, sid)
-
-        #Create Components and Connections
-        comp = sb.launch('../FileWriter.spd.xml')
-        comp.destination_uri = dataFileOut
-        comp.file_format = 'BLUEFILE'
-        comp.advanced_properties.existing_file = 'TRUNCATE'
-        
-        #Create BlueFileReader
-        source = bluefile_helpers.BlueFileReader(BULKIO__POA.dataShort)
-        source.connectPort(comp.getPort('dataShort_in'), 'conn_id1')
-        
-        #Start Components & Push Data
-        sb.start()
-        source.run(dataFileIn, streamID=sid, pktsize=4096) # but in BlueFileReader if sending more than one "packet", so size it large
-        time.sleep(2)
-        sb.stop()
-
-        #Check that the input and output files are the same
-        try:
-            self.assertEqual(filecmp.cmp(dataFileIn, dataFileOut), True)
-        except self.failureException as e:
-            comp.releaseObject()
-            #source.releaseObject() - this has no releaseObject function
-            
-            # DEBUG
-            if 0:
-                from pprint import pprint as pp
-                #Read in Data from Test Files
-                hdr1, d1 = bluefile.read(dataFileIn, dict)
-                hdr2, d2 = bluefile.read(dataFileOut, dict)
-                
-                print_hdrs = False
-                if hdr1.keys() != hdr2.keys():
-                    print_hdrs = True
-                else:
-                    for key in hdr1.keys():
-                        if hdr1[key] != hdr2[key]:
-                            print "HCB['%s'] in: %s  out: %s"%(key,hdr1[key],hdr2[key])
-                            if key != 'file_name':
-                                print_hdrs = True
-                if print_hdrs:
-                    print 'DEBUG - input header:'
-                    pp(hdr1)
-                    print 'DEBUG - output header:'
-                    pp(hdr2)
-                
-                print 'DEBUG - len(input_data)=%s - len(input_data[0])=%s'%(len(d1),len(d1[0]))
-                print 'DEBUG - len(output_data)=%s - len(output_data[0])=%s'%(len(d2),len(d2[0]))
-                data1 = list(numpy.reshape(d1,(-1,))) # flatten data
-                data2 = list(numpy.reshape(d2,(-1,))) # flatten data
-                print 'DEBUG - len(input_data)=%s'%(len(data1))
-                print 'DEBUG - len(output_data)=%s'%(len(data2))
-                
-                raise e
-            
-            try: os.remove(dataFileIn)
-            except: pass
-            try: os.remove(dataFileOut)
-            except: pass
-            raise e
-
-        #Release the components and remove the generated files
-        comp.releaseObject()
-        #source.releaseObject() - this has no releaseObject function
-        try: os.remove(dataFileIn)
-        except: pass
-        try: os.remove(dataFileOut)
-        except: pass
-        
-        print "........ PASSED\n"
-        return
+        port_poa = BULKIO__POA.dataShort
+        port_name = 'dataShort_in'
+        print "\n**TESTING TYPE 2000 BLUEFILE + SHORT PORT"
+        return self.blue2000PortTests(sid, port_poa, port_name)
+    
+    def testBlue1000ShortPortCx(self):
+        #######################################################################
+        # Test Bluefile Type 1000 SHORT Cx Functionality
+        sid = 'bluefileShortCx'
+        port_poa = BULKIO__POA.dataShort
+        port_name = 'dataShort_in'
+        print "\n**TESTING Cx TYPE 1000 BLUEFILE + SHORT PORT"
+        return self.blue1000PortTests(sid, port_poa, port_name, True)
+    
+    def testBlue2000ShortPortCx(self):
+        #######################################################################
+        # Test Bluefile Type 2000 SHORT Cx Functionality
+        sid = 'bluefileShortCx'
+        port_poa = BULKIO__POA.dataShort
+        port_name = 'dataShort_in'
+        print "\n**TESTING Cx TYPE 2000 BLUEFILE + SHORT PORT"
+        return self.blue2000PortTests(sid, port_poa, port_name, True)
     
     def testUShortPort(self):
         #######################################################################
@@ -784,6 +669,42 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         
         print "........ PASSED\n"
         return
+    
+    def testBlue1000UshortPort(self):
+        #######################################################################
+        # Test Bluefile Type 1000 USHORT Functionality
+        sid = 'bluefileUshort'
+        port_poa = BULKIO__POA.dataUshort
+        port_name = 'dataUshort_in'
+        print "\n**TESTING TYPE 1000 BLUEFILE + USHORT PORT"
+        return self.blue1000PortTests(sid, port_poa, port_name)
+    
+    def testBlue2000UshortPort(self):
+        #######################################################################
+        # Test Bluefile Type 2000 USHORT Functionality
+        sid = 'bluefileUshort'
+        port_poa = BULKIO__POA.dataUshort
+        port_name = 'dataUshort_in'
+        print "\n**TESTING TYPE 2000 BLUEFILE + USHORT PORT"
+        return self.blue2000PortTests(sid, port_poa, port_name)
+    
+    def testBlue1000UshortPortCx(self):
+        #######################################################################
+        # Test Bluefile Type 1000 USHORT Cx Functionality
+        sid = 'bluefileUshortCx'
+        port_poa = BULKIO__POA.dataUshort
+        port_name = 'dataUshort_in'
+        print "\n**TESTING Cx TYPE 1000 BLUEFILE + USHORT PORT"
+        return self.blue1000PortTests(sid, port_poa, port_name, True)
+    
+    def testBlue2000UshortPortCx(self):
+        #######################################################################
+        # Test Bluefile Type 2000 USHORT Cx Functionality
+        sid = 'bluefileUshortCx'
+        port_poa = BULKIO__POA.dataUshort
+        port_name = 'dataUshort_in'
+        print "\n**TESTING Cx TYPE 2000 BLUEFILE + USHORT PORT"
+        return self.blue2000PortTests(sid, port_poa, port_name, True)
 
     def testFloatPort(self):
         #######################################################################
@@ -843,6 +764,42 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         
         print "........ PASSED\n"
         return
+    
+    def testBlue1000FloatPort(self):
+        #######################################################################
+        # Test Bluefile Type 1000 Float Functionality
+        sid = 'bluefileFloat'
+        port_poa = BULKIO__POA.dataFloat
+        port_name = 'dataFloat_in'
+        print "\n**TESTING TYPE 1000 BLUEFILE + FLOAT PORT"
+        return self.blue1000PortTests(sid, port_poa, port_name)
+    
+    def testBlue2000FloatPort(self):
+        #######################################################################
+        # Test Bluefile Type 2000 Float Functionality
+        sid = 'bluefileFloat'
+        port_poa = BULKIO__POA.dataFloat
+        port_name = 'dataFloat_in'
+        print "\n**TESTING TYPE 2000 BLUEFILE + FLOAT PORT"
+        return self.blue2000PortTests(sid, port_poa, port_name)
+    
+    def testBlue1000FloatPortCx(self):
+        #######################################################################
+        # Test Bluefile Type 1000 Float Cx Functionality
+        sid = 'bluefileFloatCx'
+        port_poa = BULKIO__POA.dataFloat
+        port_name = 'dataFloat_in'
+        print "\n**TESTING Cx TYPE 1000 BLUEFILE + FLOAT PORT"
+        return self.blue1000PortTests(sid, port_poa, port_name, True)
+    
+    def testBlue2000FloatPortCx(self):
+        #######################################################################
+        # Test Bluefile Type 2000 Float Cx Functionality
+        sid = 'bluefileFloatCx'
+        port_poa = BULKIO__POA.dataFloat
+        port_name = 'dataFloat_in'
+        print "\n**TESTING Cx TYPE 2000 BLUEFILE + FLOAT PORT"
+        return self.blue2000PortTests(sid, port_poa, port_name, True)
 
     def testDoublePort(self):
         #######################################################################
@@ -895,6 +852,42 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         
         print "........ PASSED\n"
         return
+    
+    def testBlue1000DoublePort(self):
+        #######################################################################
+        # Test Bluefile Type 1000 DOUBLE Functionality
+        sid = 'bluefileDouble'
+        port_poa = BULKIO__POA.dataDouble
+        port_name = 'dataDouble_in'
+        print "\n**TESTING TYPE 1000 BLUEFILE + DOUBLE PORT"
+        return self.blue1000PortTests(sid, port_poa, port_name)
+    
+    def testBlue2000DoublePort(self):
+        #######################################################################
+        # Test Bluefile Type 2000 DOUBLE Functionality
+        sid = 'bluefileDouble'
+        port_poa = BULKIO__POA.dataDouble
+        port_name = 'dataDouble_in'
+        print "\n**TESTING TYPE 2000 BLUEFILE + DOUBLE PORT"
+        return self.blue2000PortTests(sid, port_poa, port_name)
+    
+    def testBlue1000DoublePortCx(self):
+        #######################################################################
+        # Test Bluefile Type 1000 DOUBLE Cx Functionality
+        sid = 'bluefileDoubleCx'
+        port_poa = BULKIO__POA.dataDouble
+        port_name = 'dataDouble_in'
+        print "\n**TESTING Cx TYPE 1000 BLUEFILE + DOUBLE PORT"
+        return self.blue1000PortTests(sid, port_poa, port_name, True)
+    
+    def testBlue2000DoublePortCx(self):
+        #######################################################################
+        # Test Bluefile Type 2000 DOUBLE Cx Functionality
+        sid = 'bluefileDoubleCx'
+        port_poa = BULKIO__POA.dataDouble
+        port_name = 'dataDouble_in'
+        print "\n**TESTING Cx TYPE 2000 BLUEFILE + DOUBLE PORT"
+        return self.blue2000PortTests(sid, port_poa, port_name, True)
         
     def testXmlPort(self):
         #######################################################################
@@ -1170,6 +1163,231 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
             os.remove(resultsFileOut)
         
         #TODO - validate timestamps, perhaps using BLUEFILEs
+        
+        print "........ PASSED\n"
+        return
+    
+    def blue1000PortTests(self, sid, port_poa, port_name, cxmode=False):
+        #######################################################################
+        # Test Bluefile Type 1000 Functionality
+        
+        #Define test files
+        dataFileIn = './bluefile.in'
+        dataFileOut = './bluefile.out'
+        
+        #Create Test Data File, remove existing file if necessary
+        if os.path.isfile(dataFileIn):
+            os.remove(dataFileIn)
+        #if not os.path.isfile(dataFileIn):
+        if 1:
+            tmpSink = bluefile_helpers.BlueFileWriter(dataFileIn, port_poa)
+            tmpSink.start()
+            srate = 5e3 # 5 kHz
+            kws = props_from_dict({'TEST_KW':1234})
+            tmpSri = BULKIO.StreamSRI(hversion=1,
+                                      xstart=0.0,
+                                      xdelta= 1.0/srate, 
+                                      xunits=1,
+                                      subsize=0,
+                                      ystart=0.0,
+                                      ydelta=0.0,
+                                      yunits=0,
+                                      mode=cxmode,
+                                      streamID=sid,
+                                      blocking=False,
+                                      keywords=kws)
+            tmpSink.pushSRI(tmpSri)
+            tmpTs = createTs()
+            tmpData = range(0, 1024*(cxmode+1)) # double number of samples to account for complex pairs
+            tmpSink.pushPacket(tmpData, tmpTs, True, sid)
+            
+        #Read in Data from Test File
+        #hdr, d = bluefile.read(dataFileIn, dict)
+        #data = list(numpy.reshape(d,(-1,))) # flatten data
+        #sri = hdr_to_sri(hdr, sid)
+
+        #Create Components and Connections
+        comp = sb.launch('../FileWriter.spd.xml')
+        comp.destination_uri = dataFileOut
+        comp.file_format = 'BLUEFILE'
+        comp.advanced_properties.existing_file = 'TRUNCATE'
+        
+        #Create BlueFileReader
+        source = bluefile_helpers.BlueFileReader(port_poa)
+        source.connectPort(comp.getPort(port_name), 'conn_id1'+sid)
+        
+        #Start Components & Push Data
+        sb.start()
+        source.run(dataFileIn, streamID=sid, pktsize=4096) # but in BlueFileReader if sending more than one "packet", so size it large
+        time.sleep(2)
+        sb.stop()
+
+        #Check that the input and output files are the same
+        try:
+            self.assertEqual(filecmp.cmp(dataFileIn, dataFileOut), True)
+        except self.failureException as e:
+            comp.releaseObject()
+            #source.releaseObject() - this has no releaseObject function
+            
+            # DEBUG
+            if 1:
+                from pprint import pprint as pp
+                #Read in Data from Test Files
+                hdr1, d1 = bluefile.read(dataFileIn, dict)
+                hdr2, d2 = bluefile.read(dataFileOut, dict)
+                
+                print_hdrs = False
+                if hdr1.keys() != hdr2.keys():
+                    print_hdrs = True
+                else:
+                    for key in hdr1.keys():
+                        if hdr1[key] != hdr2[key]:
+                            print "HCB['%s'] in: %s  out: %s"%(key,hdr1[key],hdr2[key])
+                            if key != 'file_name':
+                                print_hdrs = True
+                if print_hdrs:
+                    print 'DEBUG - input header:'
+                    pp(hdr1)
+                    print 'DEBUG - output header:'
+                    pp(hdr2)
+                
+                print 'DEBUG - len(input_data)=%s'%(len(d1))
+                print 'DEBUG - len(output_data)=%s'%(len(d2))
+                data1 = list(numpy.reshape(d1,(-1,))) # flatten data
+                data2 = list(numpy.reshape(d2,(-1,))) # flatten data
+                print 'DEBUG - len(input_data)=%s'%(len(data1))
+                print 'DEBUG - len(output_data)=%s'%(len(data2))
+                
+                raise e
+            
+            try: os.remove(dataFileIn)
+            except: pass
+            try: os.remove(dataFileOut)
+            except: pass
+            raise e
+
+        #Release the components and remove the generated files
+        comp.releaseObject()
+        #source.releaseObject() - this has no releaseObject function
+        try: os.remove(dataFileIn)
+        except: pass
+        try: os.remove(dataFileOut)
+        except: pass
+        
+        print "........ PASSED\n"
+        return
+    
+    def blue2000PortTests(self, sid, port_poa, port_name, cxmode=False):
+        #######################################################################
+        # Test Bluefile Type 2000 Functionality
+        
+        #Define test files
+        dataFileIn = './bluefile.in'
+        dataFileOut = './bluefile.out'
+        
+        #Create Test Data File, remove existing file if necessary
+        if os.path.isfile(dataFileIn):
+            os.remove(dataFileIn)
+        #if not os.path.isfile(dataFileIn):
+        if 1:
+            tmpSink = bluefile_helpers.BlueFileWriter(dataFileIn, port_poa)
+            tmpSink.start()
+            srate = 5e3 # 5 kHz
+            framesize = 64 # 64 complex sample frames
+            frames = 16 # 16 frames (total 1024 complex samples, 2048 total short samples)
+            kws = props_from_dict({'TEST_KW':1234})
+            tmpSri = BULKIO.StreamSRI(hversion=1,
+                                      xstart=-1.0*srate/2.0,
+                                      xdelta= srate/framesize, 
+                                      xunits=3,
+                                      subsize=framesize,
+                                      ystart=0.0,
+                                      ydelta=framesize/srate,
+                                      yunits=1,
+                                      mode=cxmode,
+                                      streamID=sid,
+                                      blocking=False,
+                                      keywords=kws)
+            tmpSink.pushSRI(tmpSri)
+            tmpTs = createTs()
+            tmpData = []
+            for i in xrange(frames):
+                #tmpData.append(range(i,i+framesize*(cxmode+1))) # this would create framed data, but we need flat data
+                tmpData.extend(range(i,i+framesize*(cxmode+1))) # double number of samples to account for complex pairs
+            tmpSink.pushPacket(tmpData, tmpTs, True, sid)
+            
+        #Read in Data from Test File
+        #hdr, d = bluefile.read(dataFileIn, dict)
+        #data = list(numpy.reshape(d,(-1,))) # flatten data
+        #sri = hdr_to_sri(hdr, sid)
+
+        #Create Components and Connections
+        comp = sb.launch('../FileWriter.spd.xml')
+        comp.destination_uri = dataFileOut
+        comp.file_format = 'BLUEFILE'
+        comp.advanced_properties.existing_file = 'TRUNCATE'
+        
+        #Create BlueFileReader
+        source = bluefile_helpers.BlueFileReader(port_poa)
+        source.connectPort(comp.getPort(port_name), 'conn_id2'+sid)
+        
+        #Start Components & Push Data
+        sb.start()
+        source.run(dataFileIn, streamID=sid, pktsize=4096) # but in BlueFileReader if sending more than one "packet", so size it large
+        time.sleep(2)
+        sb.stop()
+
+        #Check that the input and output files are the same
+        try:
+            self.assertEqual(filecmp.cmp(dataFileIn, dataFileOut), True)
+        except self.failureException as e:
+            comp.releaseObject()
+            #source.releaseObject() - this has no releaseObject function
+            
+            # DEBUG
+            if 0:
+                from pprint import pprint as pp
+                #Read in Data from Test Files
+                hdr1, d1 = bluefile.read(dataFileIn, dict)
+                hdr2, d2 = bluefile.read(dataFileOut, dict)
+                
+                print_hdrs = False
+                if hdr1.keys() != hdr2.keys():
+                    print_hdrs = True
+                else:
+                    for key in hdr1.keys():
+                        if hdr1[key] != hdr2[key]:
+                            print "HCB['%s'] in: %s  out: %s"%(key,hdr1[key],hdr2[key])
+                            if key != 'file_name':
+                                print_hdrs = True
+                if print_hdrs:
+                    print 'DEBUG - input header:'
+                    pp(hdr1)
+                    print 'DEBUG - output header:'
+                    pp(hdr2)
+                
+                print 'DEBUG - len(input_data)=%s - len(input_data[0])=%s'%(len(d1),len(d1[0]))
+                print 'DEBUG - len(output_data)=%s - len(output_data[0])=%s'%(len(d2),len(d2[0]))
+                data1 = list(numpy.reshape(d1,(-1,))) # flatten data
+                data2 = list(numpy.reshape(d2,(-1,))) # flatten data
+                print 'DEBUG - len(input_data)=%s'%(len(data1))
+                print 'DEBUG - len(output_data)=%s'%(len(data2))
+                
+                raise e
+            
+            try: os.remove(dataFileIn)
+            except: pass
+            try: os.remove(dataFileOut)
+            except: pass
+            raise e
+
+        #Release the components and remove the generated files
+        comp.releaseObject()
+        #source.releaseObject() - this has no releaseObject function
+        try: os.remove(dataFileIn)
+        except: pass
+        try: os.remove(dataFileOut)
+        except: pass
         
         print "........ PASSED\n"
         return
