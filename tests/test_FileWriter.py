@@ -89,12 +89,12 @@ def hdr_to_sri(hdr, stream_id):
         if isinstance(ext_hdr, dict):            
             for key, value in ext_hdr.iteritems():
                 # WARNING: CORBA types are hard-coded through here
-                dt = CF.DataType(key, ossie.properties.to_tc_value(item[1], 'long'))
+                dt = CF.DataType(key, ossie.properties.to_tc_value(long(value), 'long')) # FIXME - cast to long from numpy (or other) type (in 32-bit, the value is np.int32 and causes CORBA wrong python type error when SRI is pushed)
                 kwds.append(dt)
         elif isinstance(ext_hdr, list):
             for item in ext_hdr:
                 try:
-                    dt = CF.DataType(item[0], ossie.properties.to_tc_value(item[1], 'long'))
+                    dt = CF.DataType(item[0], ossie.properties.to_tc_value(long(item[1]), 'long')) #FIXME - cast to long from numpy (or other) type
                     kwds.append(dt)
                 except:
                     continue
