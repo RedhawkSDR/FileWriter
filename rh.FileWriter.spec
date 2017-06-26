@@ -95,3 +95,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_prefix}/dom/components/rh/FileWriter/FileWriter.spd.xml
 %{_prefix}/dom/components/rh/FileWriter/cpp
 
+%changelog
+* Wed Jun 21 2017 Ryan Bauman <rbauman@lgsinnovations.com> - 4.0.3-2
+- Mass rebuild for REDHAWK 2.1.1
+
