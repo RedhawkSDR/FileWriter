@@ -94,7 +94,7 @@ enum FILE_TYPES{
     BLUEFILE = 1
 };
 struct file_struct{
-	file_struct(std::string uri_full_filename, FILE_TYPES type, double start_tyme, bool enable_metadata, bool hidden_tmp_files,
+	file_struct(std::string uri_full_filename, FILE_TYPES type, double start_ws, double start_fs, bool enable_metadata, bool hidden_tmp_files,
 				const std::string& open_file_extension, const std::string& open_metadata_file_extension, const std::string& file_stream_id)
 	{
 		uri_filename = uri_full_filename;
@@ -104,7 +104,8 @@ struct file_struct{
         file_size_internal = 0;
         num_writers = 1;
         file_type = type;
-        start_time = start_tyme;
+        start_time_ws = start_ws;
+        start_time_fs = start_fs;
         stream_id = file_stream_id;
         midas_type = "";
 
@@ -149,7 +150,8 @@ struct file_struct{
     unsigned long long file_size_internal;
     size_t num_writers;
     FILE_TYPES file_type;
-    double start_time;
+    double start_time_ws;
+    double start_time_fs;
     std::string stream_id;
     BULKIO::StreamSRI lastSRI;
     std::string midas_type;
@@ -183,7 +185,7 @@ private:
     std::string prop_basename;
     std::string prop_full_filename;
     std::pair<blue::HeaderControlBlock,std::vector<char> >
-       createBluefilesHeaders(const BULKIO::StreamSRI& sri, size_t datasize, std::string midasType, double start_time);
+       createBluefilesHeaders(const BULKIO::StreamSRI& sri, size_t datasize, std::string midasType, double start_ws, double start_fs);
 
     std::string sri_to_XMLstring(const BULKIO::StreamSRI& sri);
     std::string eos_to_XMLstring(const BULKIO::StreamSRI& sri);

@@ -63,14 +63,10 @@ sca:// 	SCA Filesystem (path relative to SDRROOT/dom)</description>
     <simple id="advanced_properties::debug_output" mode="readwrite" name="debug_output" type="boolean">
       <description>This will enable additional debug output.</description>
       <value>false</value>
-      <kind kindtype="configure"/>
-      <action type="external"/>
     </simple>
     <simple id="advanced_properties::force_flush" mode="readwrite" name="force_flush" type="boolean">
       <description>When enabled, force a buffer (file) flush on every incoming packet.</description>
       <value>false</value>
-      <kind kindtype="configure"/>
-      <action type="external"/>
     </simple>
     <simple id="advanced_properties::max_file_size" mode="readwrite" name="max_file_size" type="string">
       <description>The maximum allowable size of the specified file.
@@ -81,8 +77,6 @@ KB (1024 Bytes)
 MB (1024^2 Bytes)
 GB (1024^3 Bytes)</description>
       <value>UNLIMITED</value>
-      <kind kindtype="configure"/>
-      <action type="external"/>
     </simple>
     <simple id="advanced_properties::max_file_time" mode="readwrite" name="max_file_time" type="long">
       <description>The maximum allowable duration of data to store.  This is calculated based on the sample rate of the incoming data, multiplied by the size of each sample.
@@ -90,8 +84,6 @@ GB (1024^3 Bytes)</description>
 -1 means unlimited.</description>
       <value>-1</value>
       <units>seconds</units>
-      <kind kindtype="configure"/>
-      <action type="external"/>
     </simple>
     <simple id="advanced_properties::existing_file" mode="readwrite" name="existing_file" type="string">
       <description>The behavior of the component in the case of the specified URI existing already.  </description>
@@ -102,20 +94,14 @@ GB (1024^3 Bytes)</description>
         <enumeration label="TRUNCATE" value="TRUNCATE"/>
         <enumeration label="RENAME" value="RENAME"/>
       </enumerations>
-      <kind kindtype="configure"/>
-      <action type="external"/>
     </simple>
     <simple id="advanced_properties::create_destination_dir" mode="readwrite" name="create_destination_dir" type="boolean">
       <description>When enabled, the destination directory specified by the URI will be created if it doesn't already exist, otherwise the data will be dropped.</description>
       <value>true</value>
-      <kind kindtype="configure"/>
-      <action type="external"/>
     </simple>
     <simple id="advanced_properties::enable_metadata_file" mode="readwrite" name="enable_metadata_file" type="boolean">
       <description>When enabled, the SRI data will be written to an XML file.</description>
       <value>false</value>
-      <kind kindtype="configure"/>
-      <action type="external"/>
     </simple>
     <simple id="advanced_properties::reset_on_max_file" name="reset_on_max_file" type="boolean">
       <description>When enabled, remove the file stream when the maximum file size has been reached.</description>
@@ -128,8 +114,6 @@ GB (1024^3 Bytes)</description>
     <simple id="advanced_properties::use_hidden_files" mode="readwrite" name="use_hidden_files" type="boolean">
       <description>When enabled, prepend a '.' to the URI basename to hide the file during writing.  This will be removed when the file is finished.</description>
       <value>true</value>
-      <kind kindtype="configure"/>
-      <action type="external"/>
     </simple>
     <simple id="advanced_properties::open_file_extension" name="open_file_extension" type="string">
       <description>An optional extension added to the URI basename of a file being written to presently.</description>
@@ -138,6 +122,18 @@ GB (1024^3 Bytes)</description>
     <simple id="advanced_properties::open_metadata_file_extension" name="open_metadata_file_extension" type="string">
       <description>An optional extension added to the URI basename of a metadata file being written to presently.</description>
       <value>inProgress</value>
+    </simple>
+    <simple id="advanced_properties::use_tc_prec" name="use_tc_prec" type="boolean">
+      <description>The BLUE file format conventionally uses the TC_PREC keyword for increased timecode precision beyond what is capable of being stored as a 64-bit floating-point number. This setting only applies when writing BLUE files (i.e. file_format must be set to BLUEFILE).
+
+When enabled, the BLUE file header &quot;timecode&quot; field will have up to microsecond precision, and precision beyond that is stored in the TC_PREC keyword.
+
+When disabled, the BLUE file header &quot;timecode&quot; field will have as much precision as possible, and the TC_PREC keyword will be absent.
+
+For example, given a timestamp with whole seconds and fractional seconds of ts_wsec=123456789.0 and ts_fsec=0.987654321, respectively:
+1) When enabled hdr.timecode=123456789.987654 and TC_PREC=&quot;3.21E-07&quot;.
+2) When disabled, hdr.timecode=123456789.987654321 and TC_PREC is absent. However, the 64-bit double timecode only provides between 15-17 significant digits of precision, and some precision will be lost.</description>
+      <value>True</value>
     </simple>
     <configurationkind kindtype="property"/>
   </struct>
@@ -148,28 +144,19 @@ GB (1024^3 Bytes)</description>
       <simple id="recording_timer::recording_enable" mode="readwrite" name="recording_enable" type="boolean">
         <description>Control whether the timestamp dictates recording should begin or end.</description>
         <value>true</value>
-        <kind kindtype="configure"/>
-        <action type="external"/>
       </simple>
       <simple id="recording_timer::use_pkt_timestamp" mode="readwrite" name="use_pkt_timestamp" type="boolean">
         <description>When enabled, use the timestamp receivied from the BULKIO packet.  When disabled, use the timestamp reported by the system.</description>
         <value>false</value>
-        <kind kindtype="configure"/>
-        <action type="external"/>
       </simple>
       <simple id="recording_timer::twsec" mode="readwrite" name="twsec" type="double">
         <description>The whole second part of the timestamp.</description>
         <value>0</value>
-        <kind kindtype="configure"/>
-        <action type="external"/>
       </simple>
       <simple id="recording_timer::tfsec" mode="readwrite" name="tfsec" type="double">
         <description>The fractional second part of the timestamp.</description>
         <value>0</value>
-        <kind kindtype="configure"/>
-        <action type="external"/>
       </simple>
-      <configurationkind kindtype="configure"/>
     </struct>
     <configurationkind kindtype="property"/>
   </structsequence>

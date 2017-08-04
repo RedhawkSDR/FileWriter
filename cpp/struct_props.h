@@ -46,6 +46,7 @@ struct advanced_properties_struct {
         use_hidden_files = true;
         open_file_extension = "inProgress";
         open_metadata_file_extension = "inProgress";
+        use_tc_prec = true;
     };
 
     static std::string getId() {
@@ -64,6 +65,7 @@ struct advanced_properties_struct {
     bool use_hidden_files;
     std::string open_file_extension;
     std::string open_metadata_file_extension;
+    bool use_tc_prec;
 };
 
 inline bool operator>>= (const CORBA::Any& a, advanced_properties_struct& s) {
@@ -106,6 +108,9 @@ inline bool operator>>= (const CORBA::Any& a, advanced_properties_struct& s) {
     if (props.contains("advanced_properties::open_metadata_file_extension")) {
         if (!(props["advanced_properties::open_metadata_file_extension"] >>= s.open_metadata_file_extension)) return false;
     }
+    if (props.contains("advanced_properties::use_tc_prec")) {
+        if (!(props["advanced_properties::use_tc_prec"] >>= s.use_tc_prec)) return false;
+    }
     return true;
 }
 
@@ -135,6 +140,8 @@ inline void operator<<= (CORBA::Any& a, const advanced_properties_struct& s) {
     props["advanced_properties::open_file_extension"] = s.open_file_extension;
  
     props["advanced_properties::open_metadata_file_extension"] = s.open_metadata_file_extension;
+ 
+    props["advanced_properties::use_tc_prec"] = s.use_tc_prec;
     a <<= props;
 }
 
@@ -162,6 +169,8 @@ inline bool operator== (const advanced_properties_struct& s1, const advanced_pro
     if (s1.open_file_extension!=s2.open_file_extension)
         return false;
     if (s1.open_metadata_file_extension!=s2.open_metadata_file_extension)
+        return false;
+    if (s1.use_tc_prec!=s2.use_tc_prec)
         return false;
     return true;
 }

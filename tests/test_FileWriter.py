@@ -1211,6 +1211,7 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         comp.destination_uri = dataFileOut
         comp.file_format = 'BLUEFILE'
         comp.advanced_properties.existing_file = 'TRUNCATE'
+        comp.advanced_properties.use_tc_prec = False
         
         #Create BlueFileReader
         source = bluefile_helpers.BlueFileReader(port_poa)
@@ -1224,7 +1225,7 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
 
         #Check that the input and output files are the same
         try:
-            self.assertEqual(filecmp.cmp(dataFileIn, dataFileOut), True)
+            self.assertEqual(filecmp.cmp(dataFileIn, dataFileOut), True, msg='BLUE file output is not identical to BLUE file input.')
         except self.failureException as e:
             comp.releaseObject()
             #source.releaseObject() - this has no releaseObject function
@@ -1326,6 +1327,7 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         comp.destination_uri = dataFileOut
         comp.file_format = 'BLUEFILE'
         comp.advanced_properties.existing_file = 'TRUNCATE'
+        comp.advanced_properties.use_tc_prec = False
         
         #Create BlueFileReader
         source = bluefile_helpers.BlueFileReader(port_poa)
@@ -1339,7 +1341,7 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
 
         #Check that the input and output files are the same
         try:
-            self.assertEqual(filecmp.cmp(dataFileIn, dataFileOut), True)
+            self.assertEqual(filecmp.cmp(dataFileIn, dataFileOut), True, msg='BLUE file output is not identical to BLUE file input.')
         except self.failureException as e:
             comp.releaseObject()
             #source.releaseObject() - this has no releaseObject function
@@ -1388,6 +1390,133 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         except: pass
         try: os.remove(dataFileOut)
         except: pass
+        
+        print "........ PASSED\n"
+        return
+    
+    def testBlueTimestampPrecision(self):
+        #######################################################################
+        # Test BLUE file high precision timecode using TC_PREC keyword
+        print "\n**TESTING BLUE file with TC_PREC"
+        
+        #Define test files
+        dataFileIn = './data.in'
+        dataFileOut = './data.out'
+        
+        #Create Test Data File if it doesn't exist
+        if not os.path.isfile(dataFileIn):
+            with open(dataFileIn, 'wb') as dataIn:
+                dataIn.write(os.urandom(1024))
+        
+        #Read in Data from Test File
+        size = os.path.getsize(dataFileIn)
+        with open (dataFileIn, 'rb') as dataIn:
+            data = list(struct.unpack('b'*size, dataIn.read(size)))
+        
+        #Create Components and Connections
+        comp = sb.launch('../FileWriter.spd.xml')
+        comp.destination_uri = dataFileOut
+        comp.file_format = 'BLUEFILE'
+        comp.advanced_properties.existing_file = 'TRUNCATE'
+        
+        # Create timestamp
+        ts_start = bulkio.bulkio_helpers.createCPUTimestamp()
+        print 'Using timestamp', repr(ts_start)
+        
+        source = sb.DataSource(bytesPerPush=64, dataFormat='8t', startTime=ts_start.twsec+ts_start.tfsec)
+        source.connect(comp,providesPortName='dataChar_in')
+        
+        #Start Components & Push Data
+        sb.start()
+        source.push(data)
+        time.sleep(2)
+        sb.stop()
+        
+        # Calculate various timestamp values  
+        ts_ws = ts_start.twsec
+        ts_fs_u = int(ts_start.tfsec*1.0e6)*1.0e-6
+        ts_fs_p = int( (ts_start.tfsec-ts_fs_u)*1.0e12 ) * 1.0e-12
+        
+        try:
+            hdr, data = bluefile.read(dataFileOut, list)
+            #print hdr
+            self.assertEqual(hdr['timecode']-631152000, ts_ws+ts_fs_u, msg='BLUE file timecode does not match expected.')
+            self.assertTrue(hdr['keylength'] > 0, msg='No keywords in BLUE file header.')
+            self.assertTrue('TC_PREC' in hdr['keywords'], msg='TC_PREC keyword not present in BLUE file header.')
+            self.assertAlmostEqual(float(hdr['keywords']['TC_PREC']), ts_fs_p, msg='BLUE file keyword TC_PREC does not match expected.')
+        except self.failureException as e:
+            comp.releaseObject()
+            source.releaseObject()
+            os.remove(dataFileIn)
+            os.remove(dataFileOut)
+            raise e
+        
+        #Release the components and remove the generated files
+        comp.releaseObject()
+        source.releaseObject()
+        os.remove(dataFileIn)
+        os.remove(dataFileOut)
+        
+        print "........ PASSED\n"
+        return
+    
+    def testBlueTimestampNoPrecision(self):
+        #######################################################################
+        # Test BLUE file without high precision timecode
+        print "\n**TESTING BLUE file w/o TC_PREC"
+        
+        #Define test files
+        dataFileIn = './data.in'
+        dataFileOut = './data.out'
+        
+        #Create Test Data File if it doesn't exist
+        if not os.path.isfile(dataFileIn):
+            with open(dataFileIn, 'wb') as dataIn:
+                dataIn.write(os.urandom(1024))
+        
+        #Read in Data from Test File
+        size = os.path.getsize(dataFileIn)
+        with open (dataFileIn, 'rb') as dataIn:
+            data = list(struct.unpack('b'*size, dataIn.read(size)))
+        
+        #Create Components and Connections
+        comp = sb.launch('../FileWriter.spd.xml')
+        comp.destination_uri = dataFileOut
+        comp.file_format = 'BLUEFILE'
+        comp.advanced_properties.existing_file = 'TRUNCATE'
+        comp.advanced_properties.use_tc_prec = False
+        
+        # Create timestamp
+        ts_start = bulkio.bulkio_helpers.createCPUTimestamp()
+        print 'Using timestamp', repr(ts_start)
+        
+        source = sb.DataSource(bytesPerPush=64, dataFormat='8t', startTime=ts_start.twsec+ts_start.tfsec)
+        source.connect(comp,providesPortName='dataChar_in')
+        
+        #Start Components & Push Data
+        sb.start()
+        source.push(data)
+        time.sleep(2)
+        sb.stop()
+        
+        try:
+            hdr, data = bluefile.read(dataFileOut, list)
+            #print hdr
+            self.assertFalse('TC_PREC' in hdr['keywords'], msg='TC_PREC keyword present in BLUE file header.')
+            #print repr(hdr['timecode']-631152000)            
+            self.assertAlmostEqual(hdr['timecode']-631152000, ts_start.twsec+ts_start.tfsec, msg='BLUE file timecode does not match expected.')
+        except self.failureException as e:
+            comp.releaseObject()
+            source.releaseObject()
+            os.remove(dataFileIn)
+            os.remove(dataFileOut)
+            raise e
+        
+        #Release the components and remove the generated files
+        comp.releaseObject()
+        source.releaseObject()
+        os.remove(dataFileIn)
+        os.remove(dataFileOut)
         
         print "........ PASSED\n"
         return
