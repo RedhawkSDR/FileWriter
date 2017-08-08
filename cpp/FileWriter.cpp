@@ -499,16 +499,16 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
                 curFileIter = stream_to_file_mapping.insert(std::make_pair(stream_id, destination_filename)).first;
                 curFileDescIter = file_to_struct_mapping.find(destination_filename);
                 if (curFileDescIter == file_to_struct_mapping.end()) {
-                	double tmp_ws = packet->T.twsec + floor(packet->T.toff);
-                	double tmp_fs = packet->T.tfsec + (packet->T.toff-floor(packet->T.toff));
-                	if (tmp_fs >= 1.0) {
-                		tmp_fs -= 1.0;
-                		tmp_ws += 1.0;
-                	}
-                	else if (tmp_fs < 0) {
-                		tmp_fs += 1.0;
-                		tmp_ws -= 1.0;
-                	}
+                    double tmp_ws = packet->T.twsec + floor(packet->T.toff);
+                    double tmp_fs = packet->T.tfsec + (packet->T.toff-floor(packet->T.toff));
+                    if (tmp_fs >= 1.0) {
+                        tmp_fs -= 1.0;
+                        tmp_ws += 1.0;
+                    }
+                    else if (tmp_fs < 0) {
+                        tmp_fs += 1.0;
+                        tmp_ws -= 1.0;
+                    }
                     file_struct fs(destination_filename, current_writer_type, tmp_ws, tmp_fs, advanced_properties.enable_metadata_file, advanced_properties.use_hidden_files, advanced_properties.open_file_extension, advanced_properties.open_metadata_file_extension, stream_id);
                     curFileDescIter = file_to_struct_mapping.insert(std::make_pair(destination_filename, fs)).first;
                     curFileDescIter->second.file_size_internal = filesystem.file_size(curFileDescIter->second.in_process_uri_filename);
@@ -848,26 +848,26 @@ std::pair<blue::HeaderControlBlock, std::vector<char> > FileWriter_i::createBlue
 
     hcb.setFormatCode(midasType);
     if ( !advanced_properties.use_tc_prec ) {
-    	hcb.setTimeCode(start_ws + start_fs + long(631152000));
+        hcb.setTimeCode(start_ws + start_fs + long(631152000));
     } else {
-		LOG_DEBUG(FileWriter_i, "Using TC_PREC keyword in BLUE file header for extra timecode precision.");
-		double start_fs_us = floor(start_fs*1.0e6)*1.0e-6;
-		double start_fs_prec = floor( (start_fs-start_fs_us)*1.0e12 ) * 1.0e-12;
-		hcb.setTimeCode(start_ws + start_fs_us + long(631152000));
-		if ( start_fs_prec != 0 ) {
-			LOG_DEBUG(FileWriter_i, "TC_PREC keyword is (double) " << start_fs_prec << ", adding to BLUE file header.");
-			// add TC_PREC keyword with value from start_fs_prec as ascii string
-			std::stringstream ss_p;
-			ss_p <<std::uppercase << start_fs_prec; // << std::nouppercase;
-			LOG_DEBUG(FileWriter_i, "TC_PREC keyword is (string) " << ss_p.str() << ", adding to BLUE file header.");
-			if ( !hcb.addKeyword("TC_PREC", ss_p.str()) ) {
-				LOG_WARN(FileWriter_i, "No room in BLUE file header for extra timecode precision (TC_PREC keyword).");
-			}
-		} else {
-			// no TC_PREC keyword, delete if necessary
-			LOG_DEBUG(FileWriter_i, "TC_PREC keyword would be zero, not including in BLUE file header.");
-			hcb.removeKeyword("TC_PREC");
-		}
+        LOG_DEBUG(FileWriter_i, "Using TC_PREC keyword in BLUE file header for extra timecode precision.");
+        double start_fs_us = floor(start_fs*1.0e6)*1.0e-6;
+        double start_fs_prec = floor( (start_fs-start_fs_us)*1.0e12 ) * 1.0e-12;
+        hcb.setTimeCode(start_ws + start_fs_us + long(631152000));
+        if ( start_fs_prec != 0 ) {
+            LOG_DEBUG(FileWriter_i, "TC_PREC keyword is (double) " << start_fs_prec << ", adding to BLUE file header.");
+            // add TC_PREC keyword with value from start_fs_prec as ascii string
+            std::stringstream ss_p;
+            ss_p <<std::uppercase << start_fs_prec; // << std::nouppercase;
+            LOG_DEBUG(FileWriter_i, "TC_PREC keyword is (string) " << ss_p.str() << ", adding to BLUE file header.");
+            if ( !hcb.addKeyword("TC_PREC", ss_p.str()) ) {
+                LOG_WARN(FileWriter_i, "No room in BLUE file header for extra timecode precision (TC_PREC keyword).");
+            }
+        } else {
+            // no TC_PREC keyword, delete if necessary
+            LOG_DEBUG(FileWriter_i, "TC_PREC keyword would be zero, not including in BLUE file header.");
+            hcb.removeKeyword("TC_PREC");
+        }
     }
 
     hcb.setDataSize(datasize - BLUEFILE_BLOCK_SIZE);
@@ -895,7 +895,7 @@ std::pair<blue::HeaderControlBlock, std::vector<char> > FileWriter_i::createBlue
             kw.setUnits(blue::NOT_APPLICABLE);
             midasKeywords.insert(kw);
         } else if (val_kind == CORBA::tk_long) {
-        	CORBA::Long tmp;
+            CORBA::Long tmp;
             sri.keywords[i].value >>= tmp;
             blue::Keyword kw(blue::LONG, id.c_str());
             kw.push();
