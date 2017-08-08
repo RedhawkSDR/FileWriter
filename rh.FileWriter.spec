@@ -18,7 +18,7 @@
 
 # By default, the RPM will install to the standard REDHAWK SDR root location (/var/redhawk/sdr)
 # You can override this at install time using --prefix /new/sdr/root when invoking rpm (preferred method, if you must)
-%{!?_sdrroot: %define _sdrroot /var/redhawk/sdr}
+%{!?_sdrroot: %global _sdrroot /var/redhawk/sdr}
 %define _prefix %{_sdrroot}
 Prefix:         %{_prefix}
 
@@ -89,7 +89,8 @@ rm -rf $RPM_BUILD_ROOT
 
 %files
 %defattr(-,redhawk,redhawk,-)
-%dir %{_prefix}/dom/components/rh/FileWriter
+%dir %{_sdrroot}/dom/components/rh
+%dir %{_sdrroot}/dom/components/rh/FileWriter
 %{_prefix}/dom/components/rh/FileWriter/FileWriter.scd.xml
 %{_prefix}/dom/components/rh/FileWriter/FileWriter.prf.xml
 %{_prefix}/dom/components/rh/FileWriter/FileWriter.spd.xml

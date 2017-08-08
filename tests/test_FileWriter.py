@@ -1521,5 +1521,129 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         print "........ PASSED\n"
         return
 
+    def testMixedCaseRawFile(self):
+        #######################################################################
+        # Test Mixed case RAW file output
+        print "\n**TESTING Mixed Case RAW file "
+        self.filenameCaseTests(0,'RAW')
+
+    def testLowerCaseRawFile(self):
+        #######################################################################
+        # Test Lower case RAW file output
+        print "\n**TESTING Lower Case RAW file "
+        self.filenameCaseTests(1,'RAW')
+
+    def testUpperCaseRawFile(self):
+        #######################################################################
+        # Test Upper case RAW file output
+        print "\n**TESTING Upper Case RAW file "
+        self.filenameCaseTests(2,'RAW')
+
+    def testMixedCaseBlueFile(self):
+        #######################################################################
+        # Test Mixed case BLUE file output
+        print "\n**TESTING Mixed Case BLUE file "
+        self.filenameCaseTests(0,'BLUEFILE')
+
+    def testLowerCaseBlueFile(self):
+        #######################################################################
+        # Test Lower case BLUE file output
+        print "\n**TESTING Lower Case BLUE file "
+        self.filenameCaseTests(1,'BLUEFILE')
+
+    def testUpperCaseBlueFile(self):
+        #######################################################################
+        # Test Upper case BLUE file output
+        print "\n**TESTING Upper Case BLUE file "
+        self.filenameCaseTests(2,'BLUEFILE')
+
+    def filenameCaseTests(self, case=0, fformat='RAW'):
+        #######################################################################
+        # Test output filename case
+        print "\n**TESTING Case %s of %s file "%(case,fformat)
+        
+        #Define test files
+        dataFileIn = './data.in'
+        STREAMID = 'Case%s%stest'%(case,fformat)
+        COL_RF = 1.2e6
+        CHAN_RF = 1.25e6
+        COLRF_HZ = '1200000Hz'
+        CF_HZ = CHANRF_HZ = '1250000Hz'
+        MY_KEYWORD = 'CustomKW'
+        dataFileOut_template = './%s.%s.%s.%s.%s.out'
+        if case == 1:
+            dataFileOut = (dataFileOut_template%(STREAMID,CF_HZ,COLRF_HZ,CHANRF_HZ,MY_KEYWORD)).lower()
+        elif case == 2:
+            dataFileOut = (dataFileOut_template%(STREAMID,CF_HZ,COLRF_HZ,CHANRF_HZ,MY_KEYWORD)).upper()
+        else: #if case == 0:
+            dataFileOut = dataFileOut_template%(STREAMID,CF_HZ,COLRF_HZ,CHANRF_HZ,MY_KEYWORD)
+        
+        keywords = [sb.io_helpers.SRIKeyword('COL_RF',COL_RF, 'double'),
+                    sb.io_helpers.SRIKeyword('CHAN_RF',CHAN_RF, 'double'),
+                    sb.io_helpers.SRIKeyword('MY_KEYWORD',MY_KEYWORD, 'string')]
+
+        
+        #Create Test Data File if it doesn't exist
+        if not os.path.isfile(dataFileIn):
+            with open(dataFileIn, 'wb') as dataIn:
+                dataIn.write(os.urandom(1024))
+        
+        #Read in Data from Test File
+        size = os.path.getsize(dataFileIn)
+        with open (dataFileIn, 'rb') as dataIn:
+            data = list(struct.unpack('f' * (size/4), dataIn.read(size)))
+
+
+
+        #Create Components and Connections
+        comp = sb.launch('../FileWriter.spd.xml')
+        comp.destination_uri = dataFileOut_template%('%STREAMID%','%CF_HZ%','%COLRF_HZ%','%CHANRF_HZ%','%MY_KEYWORD%')
+        comp.file_format = fformat
+        comp.advanced_properties.existing_file = "TRUNCATE"
+        comp.advanced_properties.output_filename_case = case
+        
+        source = sb.DataSource(bytesPerPush=64, dataFormat='32f')
+        source.connect(comp,providesPortName='dataFloat_in')
+        
+        #Start Components & Push Data
+        sb.start()
+        source.push(data, streamID=STREAMID, SRIKeywords=keywords)
+        time.sleep(2)
+        sb.stop()
+
+        #Check that the input and output files are the same
+        self.assertEqual(os.path.exists(dataFileOut), True, msg='Output file does not exist on filesystem')
+        if fformat == 'BLUEFILE':
+            comp.releaseObject()
+            source.releaseObject()
+            os.remove(dataFileIn)
+            os.remove(dataFileOut)
+        else:
+            try:
+                self.assertEqual(filecmp.cmp(dataFileIn, dataFileOut), True, msg='Output file exists, but contents of file are incorrect')
+            except self.failureException as e:
+                # unpacked bytes may be NaN, which could cause test to fail unnecessarily
+                size = os.path.getsize(dataFileOut)
+                with open (dataFileOut, 'rb') as dataOut:
+                    data2 = list(struct.unpack('f' * (size/4), dataOut.read(size)))
+                for a,b in zip(data,data2):
+                    if a!=b:
+                        if a!=a and b!=b:
+                            print "Difference in NaN format, ignoring..."
+                        else:
+                            print "FAILED:",a,"!=",b
+                            raise e
+
+            #Release the components and remove the generated files
+            finally:
+                comp.releaseObject()
+                source.releaseObject()
+                os.remove(dataFileIn)
+                os.remove(dataFileOut)
+
+        
+        print "........ PASSED\n"
+        return
+
 if __name__ == "__main__":
     ossie.utils.testing.main("../FileWriter.spd.xml") # By default tests all implementations

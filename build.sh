@@ -23,7 +23,7 @@ if [ "$1" = "rpm" ]; then
         mydir=`dirname $0`
         tmpdir=`mktemp -d`
         cp -r ${mydir} ${tmpdir}/rh.FileWriter-4.1.0
-        tar czf ${tmpdir}/rh.FileWriter-4.1.0.tar.gz --exclude=".svn" -C ${tmpdir} rh.FileWriter-4.1.0
+        tar czf ${tmpdir}/rh.FileWriter-4.1.0.tar.gz --exclude=".svn" --exclude=".git" -C ${tmpdir} rh.FileWriter-4.1.0
         rpmbuild -ta ${tmpdir}/rh.FileWriter-4.1.0.tar.gz
         rm -rf $tmpdir
     else
@@ -55,6 +55,10 @@ else
             ./reconf && ./configure && make $*
         else
             echo "No build.sh found for $impl"
+        fi
+        retval=$?
+        if [ $retval != '0' ]; then
+            exit $retval
         fi
         cd -
     done

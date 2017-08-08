@@ -135,6 +135,18 @@ For example, given a timestamp with whole seconds and fractional seconds of ts_w
 2) When disabled, hdr.timecode=123456789.987654321 and TC_PREC is absent. However, the 64-bit double timecode only provides between 15-17 significant digits of precision, and some precision will be lost.</description>
       <value>True</value>
     </simple>
+    <simple id="advanced_properties::output_filename_case" name="output_filename_case" type="short">
+      <description>Letter case of output filename. Allow mixed case (0), force lower case (1), or force upper case (2). Default is to allow mixed case.
+
+Note: Changing this property will take affect on the next new file that is initiated, and will not affect any files that are in progress.</description>
+      <value>0</value>
+      <units>Case</units>
+      <enumerations>
+        <enumeration label="mixed" value="0"/>
+        <enumeration label="lower" value="1"/>
+        <enumeration label="upper" value="2"/>
+      </enumerations>
+    </simple>
     <configurationkind kindtype="property"/>
   </struct>
   <structsequence id="recording_timer" mode="readwrite" name="recording_timer">

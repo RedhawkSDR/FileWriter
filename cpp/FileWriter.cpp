@@ -792,6 +792,22 @@ std::string FileWriter_i::stream_to_basename(const std::string & stream_id, cons
     bn = replace_string(bn, "%COLRF_HZ%", std::string(colrf_hz_str));
     bn = replace_string(bn, "%CHANRF_HZ%", std::string(chanrf_hz_str));
 
+    // Force to lower/upper case here if needed
+    //advanced_properties.output_filename_case: 0 mixed; 1 lower; 2 upper
+    switch( advanced_properties.output_filename_case ) {
+    //case 0: // mixed case permitted - do nothing, same as default case
+    //    break;
+    case 1: // tolower
+        std::transform(bn.begin(), bn.end(), bn.begin(), ::tolower);
+        break;
+    case 2: // toupper
+        std::transform(bn.begin(), bn.end(), bn.begin(), ::toupper);
+        break;
+    default:
+        // do nothing
+        break;
+    }
+
     return bn;
 }
 
