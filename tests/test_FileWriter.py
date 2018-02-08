@@ -1440,7 +1440,7 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         try:
             hdr, data = bluefile.read(dataFileOut, list)
             #print hdr
-            self.assertEqual(hdr['timecode']-631152000, ts_ws+ts_fs_u, msg='BLUE file timecode does not match expected.')
+            self.assertAlmostEqual(hdr['timecode']-631152000, ts_ws+ts_fs_u, places=5, msg='BLUE file timecode does not match expected.')
             self.assertTrue(hdr['keylength'] > 0, msg='No keywords in BLUE file header.')
             self.assertTrue('TC_PREC' in hdr['keywords'], msg='TC_PREC keyword not present in BLUE file header.')
             self.assertAlmostEqual(float(hdr['keywords']['TC_PREC']), ts_fs_p, msg='BLUE file keyword TC_PREC does not match expected.')
@@ -1504,7 +1504,7 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
             #print hdr
             self.assertFalse('TC_PREC' in hdr['keywords'], msg='TC_PREC keyword present in BLUE file header.')
             #print repr(hdr['timecode']-631152000)            
-            self.assertAlmostEqual(hdr['timecode']-631152000, ts_start.twsec+ts_start.tfsec, msg='BLUE file timecode does not match expected.')
+            self.assertAlmostEqual(hdr['timecode']-631152000, ts_start.twsec+ts_start.tfsec,places=5, msg='BLUE file timecode does not match expected.')
         except self.failureException as e:
             comp.releaseObject()
             source.releaseObject()
