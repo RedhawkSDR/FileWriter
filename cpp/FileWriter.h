@@ -194,11 +194,14 @@ private:
     size_t sizeString_to_longBytes(std::string size);
     bool close_file(const std::string& filename, const BULKIO::PrecisionUTCTime & timestamp, std::string streamId = "");
 
+    void mergeKeywords(BULKIO::StreamSRI::_keywords_seq newkeywords);
+
     // Ensure that configure() and serviceFunction() are thread safe
     boost::mutex service_thread_lock;
     ABSTRACTED_FILE_IO::abstracted_file_io filesystem;
     FILE_TYPES current_writer_type;
 
+    BULKIO::StreamSRI::_keywords_seq allKeywords;
 
     std::map<std::string, std::string> stream_to_file_mapping;
     std::map<std::string, file_struct> file_to_struct_mapping;

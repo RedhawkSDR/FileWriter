@@ -614,11 +614,19 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
                     std::string metadata = sri_to_XMLstring(packet->SRI);
                     filesystem.write(curFileDescIter->second.in_process_uri_metadata_filename, &metadata, advanced_properties.force_flush);
                 }
+                if (curFileDescIter->second.file_type == BLUEFILE) {
+                	mergeKeywords(curFileDescIter->second.lastSRI.keywords);
+                	curFileDescIter->second.lastSRI.keywords = allKeywords;
+                }
             }
 
             // Close File
             if (eos || reached_max_size) {
                 LOG_DEBUG(FileWriter_i, " *** PROCESSING EOS FOR STREAM ID : " << stream_id);
+                if (eos) {
+
+					allKeywords.length(0);
+                }
                 if (eos && curFileDescIter->second.metdata_file_enabled()) {
                     std::string metadata = eos_to_XMLstring(packet->SRI);
                     filesystem.write(curFileDescIter->second.in_process_uri_metadata_filename, &metadata, advanced_properties.force_flush);
@@ -977,52 +985,41 @@ std::pair<blue::HeaderControlBlock, std::vector<char> > FileWriter_i::createBlue
     // Add to buffer
     std::vector<char> buff;
     std::set<blue::Keyword>::iterator it = midasKeywords.begin();
-    int lastkeyword = -1;
     for (; it != midasKeywords.end(); ++it) {
-        //        cout << "Snapper_cpp_impl1_i::writeMidasExtendedHeader keyword " << it->getName() << " value " << it->getRawData() << " format " << it->getFormat() << " units " << it->getUnits() << " isIndexKeyword " << it->isIndexKeyword() << "  ===================" << endl;
-        int savedSize = buff.size();
-        int newKwSize = 0;
+        //std::cout << "Snapper_cpp_impl1_i::writeMidasExtendedHeader keyword " << it->getName() << " value " << it->getRawData() << " format " << it->getFormat() << " units " << it->getUnits() << " isIndexKeyword " << it->isIndexKeyword() << "  ===================" << std::endl;
         if (it->getFormat() == blue::ASCII) {
             std::string data = it->getString();
-            newKwSize = blue::MidasKey::PackMemory(it->getName(), data, &buff);
+            blue::MidasKey::PackMemory(it->getName(), data, &buff);
         } else {
-            newKwSize = blue::MidasKey::PackMemory(it->getName(), it->getRawData(), it->size(), it->getFormat(), &buff);
+            blue::MidasKey::PackMemory(it->getName(), it->getRawData(), it->size(), it->getFormat(), &buff);
         }
-
-        if (newKwSize > 0)
-            lastkeyword = savedSize;
 
         blue::UnitCodeEnum unit = it->getUnits();
         if (unit != blue::NOT_APPLICABLE && unit != blue::NOT_APPLICABLE) {
-            savedSize = buff.size();
             int16_t iunit = static_cast<int16_t> (unit);
-            newKwSize = blue::MidasKey::PackMemory(it->getName() + ".UNITS", &iunit, 1, blue::INTEGER, &buff);
+            blue::MidasKey::PackMemory(it->getName() + ".UNITS", &iunit, 1, blue::INTEGER, &buff);
         }
 
         if (it->isIndexKeyword()) {
-            savedSize = buff.size();
             if (it->getIndexFormat() == blue::ASCII) {
                 std::string data = it->getIndexString();
-                newKwSize = blue::MidasKey::PackMemory(it->getName() + ".INDEX", data, &buff);
+                blue::MidasKey::PackMemory(it->getName() + ".INDEX", data, &buff);
             } else {
                 std::vector<char> data;
                 it->getRawIndexData(&data);
-                newKwSize = blue::MidasKey::PackMemory(
+                blue::MidasKey::PackMemory(
                         it->getName() + ".INDEX", &data[0],
                         it->size(), it->getIndexFormat(), &buff);
             }
 
             unit = it->getIndexUnits();
             if (unit != blue::NOT_APPLICABLE && unit != blue::NOT_APPLICABLE) {
-                savedSize = buff.size();
                 int16_t iunit = static_cast<int16_t> (unit);
-                newKwSize = blue::MidasKey::PackMemory(
+                blue::MidasKey::PackMemory(
                         it->getName() + ".INDEX_UNITS", &iunit, 1, blue::INTEGER, &buff);
             }
         } // if indexKey
 
-        if (newKwSize > 0)
-            lastkeyword = savedSize;
     }
 
     //ExtendedHeader::close_()
@@ -1070,4 +1067,30 @@ size_t FileWriter_i::sizeString_to_longBytes(std::string size) {
 
     return size_t(prefix_multiplier * std::atof(size.c_str()));
 };
+
+void FileWriter_i::mergeKeywords(BULKIO::StreamSRI::_keywords_seq newkeywords) {
+
+	for (unsigned int i = 0; i<newkeywords.length(); i++) {
+		bool found = false;
+		for (unsigned int j = 0; j<allKeywords.length(); j++) {
+			if (!strcmp(newkeywords[i].id,allKeywords[j].id)) {
+				//Keywords already in List, update value
+				LOG_DEBUG(FileWriter_i, "  mergeKeywords: Keywords already in List, update value " << newkeywords[i].id)
+				allKeywords[j].value = newkeywords[i].value;
+				found=true;
+				break;
+			}
+		}
+		if (!found) {
+			//Keyword not already in list of all keywords so add it
+			LOG_DEBUG(FileWriter_i, "  mergeKeywords: Adding Keyword " << newkeywords[i].id)
+			allKeywords.length(allKeywords.length()+1);
+			allKeywords[allKeywords.length()-1] = newkeywords[i];
+
+		}
+
+	}
+
+};
+
 

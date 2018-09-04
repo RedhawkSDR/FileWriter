@@ -31,6 +31,7 @@ from ossie.utils.bulkio import bulkio_helpers
 from bulkio.bulkioInterfaces import BULKIO, BULKIO__POA
 from bulkio.sri import create as createSri
 from bulkio.timestamp import create as createTs
+import bulkio as bio
 import numpy
 
 
@@ -1644,6 +1645,249 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         
         print "........ PASSED\n"
         return
+    def testBlueFileKeywords(self):
+        
+        dataFileOut = './testdata.out'
+        
+        # Setup FileWriter
+        comp = sb.launch('../FileWriter.spd.xml')
+        comp.destination_uri = dataFileOut
+        
+        comp.file_format = 'BLUEFILE'
+        comp.advanced_properties.use_hidden_files = False
+        port = comp.getPort('dataShort_in')
+        comp.start()
+        
+        # Create an SRI with 2 keywords (a,b)
+        kws = props_from_dict({'TEST_KW1':1111,'TEST_KW2':'2222'})
+        srate = 10.0e6
+        sri1 = BULKIO.StreamSRI(hversion=1,
+                                  xstart=0,
+                                  xdelta= 1.0/srate, 
+                                  xunits=1,
+                                  subsize=0,
+                                  ystart=0.0,
+                                  ydelta=0,
+                                  yunits=1,
+                                  mode=0,
+                                  streamID="test_streamID",
+                                  blocking=False,
+                                  keywords=kws)
+        data = range(1000)
+        
+        # Push SRI
+        port.pushSRI(sri1)
+        #Push packet of data 
+        port.pushPacket(data, bio.timestamp.now(), False, "test_streamID")   
+        port.pushPacket(data, bio.timestamp.now(), False, "test_streamID")
+        port.pushPacket(data, bio.timestamp.now(), False, "test_streamID")       
 
+ 
+         
+        # Create an SRI with 2 keywords (1 same as above with new value (a'), 1 new keyword(c))
+        kws = props_from_dict({'TEST_KW1':0,'TEST_KW3':'3333'})
+         
+        sri2 = BULKIO.StreamSRI(hversion=1,
+                                  xstart=0,
+                                  xdelta= 1/srate, 
+                                  xunits=1,
+                                  subsize=0,
+                                  ystart=0.0,
+                                  ydelta=0,
+                                  yunits=1,
+                                  mode=0,
+                                  streamID="test_streamID",
+                                  blocking=False,
+                                  keywords=kws)
+        # Push SRI
+        port.pushSRI(sri2)
+         
+        #Push packet of data 
+        port.pushPacket(data, bio.timestamp.now(), False, "test_streamID")   
+        port.pushPacket(data, bio.timestamp.now(), False, "test_streamID")
+        #Push packet of data with EOS
+        port.pushPacket(data, bio.timestamp.now(), True, "test_streamID")   
+        
+        time.sleep(1)
+        
+        #Open up bluefile
+        self.assertEqual(os.path.exists(dataFileOut), True, msg='Output file does not exist on filesystem')
+        
+        header, data = bluefile.read(dataFileOut,ext_header_type=dict)
+        #Check for three keywords verify a', b, c, 
+        
+        keywords = header['ext_header'].copy()
+        keywords.update(header['keywords'])
+         
+        self.assertTrue('TEST_KW1' in keywords,msg="Keyword 1 missing")
+        self.assertEqual(keywords['TEST_KW1'],0,msg="Keyword 1 has wrong value")
+ 
+        self.assertTrue('TEST_KW2' in keywords,msg="Keyword 2 missing")
+        self.assertEqual(keywords['TEST_KW2'],'2222',msg="Keyword 2 has wrong value")
+         
+        self.assertTrue('TEST_KW3' in keywords,msg="Keyword 3 missing")
+        self.assertEqual(keywords['TEST_KW3'],'3333',msg="Keyword 3 has wrong value")        
+                
+        dataFileOut2 = './testdata2.out'
+        comp.destination_uri = dataFileOut2
+        
+        # Create an SRI with 2 keywords (a,b)
+        kws = props_from_dict({'TEST_KW6':'6666','TEST_KW7':'7777'})
+        srate = 10.0e6
+        sri1 = BULKIO.StreamSRI(hversion=1,
+                                  xstart=0,
+                                  xdelta= 1.0/srate, 
+                                  xunits=1,
+                                  subsize=0,
+                                  ystart=0.0,
+                                  ydelta=0,
+                                  yunits=1,
+                                  mode=0,
+                                  streamID="test_streamID2",
+                                  blocking=False,
+                                  keywords=kws)
+        data = range(1000)
+        
+        # Push SRI
+        port.pushSRI(sri1)
+        #Push packet of data 
+        port.pushPacket(data, bio.timestamp.now(), False, "test_streamID2")   
+        port.pushPacket(data, bio.timestamp.now(), False, "test_streamID2")
+        port.pushPacket(data, bio.timestamp.now(), True, "test_streamID2")  
+        
+        time.sleep(1)
+        
+                #Open up bluefile
+        self.assertEqual(os.path.exists(dataFileOut2), True, msg='Output file 2 does not exist on filesystem')
+        
+        header, data = bluefile.read(dataFileOut2,ext_header_type=dict)
+        #Check for three keywords verify a', b, c, 
+        
+        keywords = header['ext_header'].copy()
+        keywords.update(header['keywords'])
+         
+        self.assertTrue('TEST_KW6' in keywords,msg="Keyword 1 missing")
+        self.assertEqual(keywords['TEST_KW6'],'6666',msg="Keyword 6 has wrong value")
+ 
+        self.assertTrue('TEST_KW7' in keywords,msg="Keyword 2 missing")
+        self.assertEqual(keywords['TEST_KW7'],'7777',msg="Keyword 7 has wrong value")
+         
+        self.assertFalse('TEST_KW3' in keywords,msg="Keyword 3 still present")
+        self.assertFalse('TEST_KW2' in keywords,msg="Keyword 2 still present")
+        self.assertFalse('TEST_KW1' in keywords,msg="Keyword 1 still present")
+       
+        os.remove(dataFileOut2)
+        os.remove(dataFileOut)
+        
+    def testBlueFileKeywordsMultipleFiles(self):
+        
+        dataFileOut = './testdata.out'
+        seconddataFileOut = dataFileOut+'-1'
+        
+        # Setup FileWriter
+        comp = sb.launch('../FileWriter.spd.xml')
+        comp.destination_uri = dataFileOut
+        
+        comp.file_format = 'BLUEFILE'
+        #comp.advanced_properties.enable_metadata_file=True
+        
+        #comp.advanced_properties.existing_file = 'TRUNCATE'
+        comp.advanced_properties.use_hidden_files = False
+        
+        # With a max file size of 6000, the first data file written will be done before the second SRI comes in.
+        comp.advanced_properties.max_file_size = "6000"
+        port = comp.getPort('dataShort_in')
+        comp.start()
+        
+        # Create an SRI with 2 keywords (1,2)
+        kws = props_from_dict({'TEST_KW1':1111,'TEST_KW2':'2222'})
+        srate = 10.0e6
+        sri1 = BULKIO.StreamSRI(hversion=1,
+                                  xstart=0,
+                                  xdelta= 1.0/srate, 
+                                  xunits=1,
+                                  subsize=0,
+                                  ystart=0.0,
+                                  ydelta=0,
+                                  yunits=1,
+                                  mode=0,
+                                  streamID="test_streamID",
+                                  blocking=False,
+                                  keywords=kws)
+        data = range(1000)
+        
+        # Push SRI
+        port.pushSRI(sri1)
+        #Push packet of data 
+        port.pushPacket(data, bio.timestamp.now(), False, "test_streamID")   
+        port.pushPacket(data, bio.timestamp.now(), False, "test_streamID")
+        port.pushPacket(data, bio.timestamp.now(), False, "test_streamID")       
+
+ 
+         
+        # Create an SRI with 2 keywords (1 same as above with new value (1'), 1 new keyword(3))
+        kws = props_from_dict({'TEST_KW1':0,'TEST_KW3':'3333'})
+         
+        sri2 = BULKIO.StreamSRI(hversion=1,
+                                  xstart=0,
+                                  xdelta= 1/srate, 
+                                  xunits=1,
+                                  subsize=0,
+                                  ystart=0.0,
+                                  ydelta=0,
+                                  yunits=1,
+                                  mode=0,
+                                  streamID="test_streamID",
+                                  blocking=False,
+                                  keywords=kws)
+        # Push SRI
+        port.pushSRI(sri2)
+         
+        #Push packet of data 
+        port.pushPacket(data, bio.timestamp.now(), False, "test_streamID")   
+        port.pushPacket(data, bio.timestamp.now(), False, "test_streamID")
+        #Push packet of data with EOS
+        port.pushPacket(data, bio.timestamp.now(), True, "test_streamID")   
+        
+        time.sleep(1)
+        
+        #Open up bluefile
+        self.assertEqual(os.path.exists(dataFileOut), True, msg='Output file does not exist on filesystem')
+        
+        header, data = bluefile.read(dataFileOut,ext_header_type=dict)
+        #Check for three keywords verify a', b, c, 
+        
+        keywords = header['ext_header'].copy()
+        keywords.update(header['keywords'])
+        
+        # With a max file size of 6000, the first data file written will be done before the second SRI comes in.
+        self.assertTrue('TEST_KW1' in keywords,msg="Keyword 1 missing")
+        self.assertEqual(keywords['TEST_KW1'],1111,msg="Keyword 1 has wrong value")
+ 
+        self.assertTrue('TEST_KW2' in keywords,msg="Keyword 2 missing")
+        self.assertEqual(keywords['TEST_KW2'],'2222',msg="Keyword 2 has wrong value")
+     
+        self.assertEqual(os.path.exists(dataFileOut), True, msg='Output file does not exist on filesystem')
+        
+        header, data = bluefile.read(seconddataFileOut,ext_header_type=dict)
+
+        
+        keywords2 = header['ext_header'].copy()
+        keywords2.update(header['keywords'])
+
+        # With a max file size of 6000, the second data file written will have the updated keywords in it.
+        self.assertTrue('TEST_KW1' in keywords2,msg="Keyword 1 missing")
+        self.assertEqual(keywords2['TEST_KW1'],0,msg="Keyword 1 has wrong value")
+ 
+        self.assertTrue('TEST_KW2' in keywords2,msg="Keyword 2 missing")
+        self.assertEqual(keywords2['TEST_KW2'],'2222',msg="Keyword 2 has wrong value")
+         
+        self.assertTrue('TEST_KW3' in keywords2,msg="Keyword 3 missing")
+        self.assertEqual(keywords2['TEST_KW3'],'3333',msg="Keyword 3 has wrong value")   
+
+        os.remove(seconddataFileOut)
+        os.remove(dataFileOut)
+        
+        
 if __name__ == "__main__":
     ossie.utils.testing.main("../FileWriter.spd.xml") # By default tests all implementations
