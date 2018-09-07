@@ -187,8 +187,9 @@ private:
     std::pair<blue::HeaderControlBlock,std::vector<char> >
        createBluefilesHeaders(const BULKIO::StreamSRI& sri, size_t datasize, std::string midasType, double start_ws, double start_fs);
 
-    std::string sri_to_XMLstring(const BULKIO::StreamSRI& sri);
-    std::string eos_to_XMLstring(const BULKIO::StreamSRI& sri);
+    std::string sri_to_XMLstring(const BULKIO::StreamSRI& sri,const bool newsri);
+    std::string packet_to_XMLstring(const int packetSize, const BULKIO::StreamSRI& sri, const BULKIO::PrecisionUTCTime& timecode, const bool& eos);
+
     std::string stream_to_basename(const std::string & stream_id,const BULKIO::StreamSRI& sri, const BULKIO::PrecisionUTCTime &_T, const std::string & extension, const std::string & dt);
     template <class IN_PORT_TYPE> bool singleService(IN_PORT_TYPE *dataIn, const std::string & dt);
     size_t sizeString_to_longBytes(std::string size);

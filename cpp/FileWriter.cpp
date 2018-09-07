@@ -536,8 +536,10 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
 
                     // Initialize Metadata File
                     if (curFileDescIter->second.metdata_file_enabled()){
-                        std::string openXML = "<FileWriter_metadata>";
-                        filesystem.write(curFileDescIter->second.in_process_uri_metadata_filename, &openXML, advanced_properties.force_flush);
+                    	std::ostringstream openXML;
+                    	openXML << "<FileWriter_metadata datafile=\""<< curFileDescIter->second.basename<<"\">";
+                        std::string openXML_str = openXML.str();
+                    	filesystem.write(curFileDescIter->second.in_process_uri_metadata_filename, &openXML_str, advanced_properties.force_flush);
                     }
 
                     // BLUEFILE
@@ -611,7 +613,7 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
                 packet->SRI.streamID = stream_id.c_str();
                 dataFile_out->pushSRI(packet->SRI);
                 if (curFileDescIter->second.metdata_file_enabled()) {
-                    std::string metadata = sri_to_XMLstring(packet->SRI);
+                    std::string metadata = sri_to_XMLstring(packet->SRI,packet->sriChanged);
                     filesystem.write(curFileDescIter->second.in_process_uri_metadata_filename, &metadata, advanced_properties.force_flush);
                 }
                 if (curFileDescIter->second.file_type == BLUEFILE) {
@@ -620,16 +622,19 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
                 }
             }
 
+            //Write packet metadata to file
+            if (curFileDescIter->second.metdata_file_enabled()) {
+            	std::string packetmetadata = packet_to_XMLstring(packet->dataBuffer.size(),packet->SRI,packet->T,packet->EOS);
+                filesystem.write(curFileDescIter->second.in_process_uri_metadata_filename, &packetmetadata, advanced_properties.force_flush);
+
+            }
+
             // Close File
             if (eos || reached_max_size) {
                 LOG_DEBUG(FileWriter_i, " *** PROCESSING EOS FOR STREAM ID : " << stream_id);
                 if (eos) {
 
 					allKeywords.length(0);
-                }
-                if (eos && curFileDescIter->second.metdata_file_enabled()) {
-                    std::string metadata = eos_to_XMLstring(packet->SRI);
-                    filesystem.write(curFileDescIter->second.in_process_uri_metadata_filename, &metadata, advanced_properties.force_flush);
                 }
                 close_file(destination_filename, packet->T, stream_id);
                 if (reached_max_size && advanced_properties.reset_on_max_file) {
@@ -819,17 +824,21 @@ std::string FileWriter_i::stream_to_basename(const std::string & stream_id, cons
     return bn;
 }
 
-std::string FileWriter_i::sri_to_XMLstring(const BULKIO::StreamSRI& sri) {
+std::string FileWriter_i::sri_to_XMLstring(const BULKIO::StreamSRI& sri,const bool newsri) {
     std::ostringstream sri_string;
-    sri_string << "<sri>";
+    if (newsri) {
+    	sri_string << "<sri new=\"true\">";
+    } else {
+    	sri_string << "<sri new=\"false\">";
+    }
     sri_string << "<streamID>" << sri.streamID << "</streamID>";
     sri_string << "<hversion>" << sri.hversion << "</hversion>";
     sri_string << "<xstart>" << sri.xstart << "</xstart>";
-    sri_string << "<xdelta>" << sri.xdelta << "</xdelta>";
+    sri_string << "<xdelta>" <<std::setprecision (15) <<sri.xdelta << "</xdelta>";
     sri_string << "<xunits>" << sri.xunits << "</xunits>";
     sri_string << "<subsize>" << sri.subsize << "</subsize>";
     sri_string << "<ystart>" << sri.ystart << "</ystart>";
-    sri_string << "<ydelta>" << sri.ydelta << "</ydelta>";
+    sri_string << "<ydelta>" <<std::setprecision (15)<< sri.ydelta << "</ydelta>";
     sri_string << "<yunits>" << sri.yunits << "</yunits>";
     sri_string << "<mode>" << sri.mode << "</mode>";
     for (unsigned int i = 0; i < sri.keywords.length(); i++) {
@@ -841,12 +850,22 @@ std::string FileWriter_i::sri_to_XMLstring(const BULKIO::StreamSRI& sri) {
     return std::string(sri_string.str());
 }
 
-std::string FileWriter_i::eos_to_XMLstring(const BULKIO::StreamSRI& sri) {
-    std::ostringstream eos_string;
-    eos_string << "<eos>";
-    eos_string << "<streamID>" << sri.streamID << "</streamID>";
-    eos_string << "</eos>";
-    return std::string(eos_string.str());
+std::string FileWriter_i::packet_to_XMLstring(const int packetSize, const BULKIO::StreamSRI& sri,const BULKIO::PrecisionUTCTime& timecode, const bool& eos) {
+    std::ostringstream packet_string;
+    packet_string << "<packet>";
+    packet_string << "<streamID>" << sri.streamID << "</streamID>";
+    packet_string << "<datalength>" << packetSize << "</datalength>";
+    packet_string << "<EOS>" <<eos << "</EOS>";
+    packet_string << "<timecode>";
+    packet_string << "<tcmode>" << timecode.tcmode << "</tcmode>";
+    packet_string << "<tcstatus>" << timecode.tcstatus << "</tcstatus>";
+    packet_string << "<tfsec>" <<std::setprecision (15) << timecode.tfsec << "</tfsec>";
+    packet_string << "<toff>" << timecode.toff << "</toff>";
+    packet_string << "<twsec>" <<std::setprecision (15)<< timecode.twsec << "</twsec>";
+    packet_string << "</timecode>";
+    packet_string << "</packet>";
+    return std::string(packet_string.str());
+
 }
 
 std::pair<blue::HeaderControlBlock, std::vector<char> > FileWriter_i::createBluefilesHeaders(const BULKIO::StreamSRI& sri, size_t datasize, std::string midasType, double start_ws, double start_fs) {
