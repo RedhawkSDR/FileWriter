@@ -1981,7 +1981,7 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
             self.assertEqual(node.getElementsByTagName('streamID')[0].childNodes[0].data,"test_streamID")
             keywords = {}
             for keyword in node.getElementsByTagName('keyword'):
-                keywords[keyword.getElementsByTagName('id')[0].childNodes[0].data] = keyword.getElementsByTagName('value')[0].childNodes[0].data
+                keywords[keyword.attributes['id'].value] = keyword.childNodes[0].data
             self.assertTrue("TEST_KW1" in keywords)
             self.assertTrue("TEST_KW2" in keywords)
         self.assertEqual(sricount, 1, "Received more than 1 sri in metadata")
@@ -1991,7 +1991,7 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         for node in firstmetadataxml.getElementsByTagName('packet'):
             packetcount+=1
             self.assertEqual(node.getElementsByTagName('streamID')[0].childNodes[0].data,"test_streamID")
-            self.assertEqual(node.getElementsByTagName('datalength')[0].childNodes[0].data,"1000")
+            self.assertEqual(node.getElementsByTagName('datalength')[0].childNodes[0].data,"2000")
             self.assertEqual(node.getElementsByTagName('EOS')[0].childNodes[0].data,"0")
             timecodes.append({'tfsec':node.getElementsByTagName('timecode')[0].getElementsByTagName('tfsec')[0].childNodes[0].data,
                               'twsec':node.getElementsByTagName('timecode')[0].getElementsByTagName('twsec')[0].childNodes[0].data})
@@ -2016,13 +2016,13 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
             if sricount==1:
                 keywords = {}
                 for keyword in node.getElementsByTagName('keyword'):
-                    keywords[keyword.getElementsByTagName('id')[0].childNodes[0].data] = keyword.getElementsByTagName('value')[0].childNodes[0].data
+                    keywords[keyword.attributes['id'].value] = keyword.childNodes[0].data
                 self.assertTrue("TEST_KW1" in keywords)
                 self.assertTrue("TEST_KW2" in keywords)
             elif sricount==2:
                 keywords = {}
                 for keyword in node.getElementsByTagName('keyword'):
-                    keywords[keyword.getElementsByTagName('id')[0].childNodes[0].data] = keyword.getElementsByTagName('value')[0].childNodes[0].data
+                    keywords[keyword.attributes['id'].value] = keyword.childNodes[0].data
                 self.assertTrue("TEST_KW5" in keywords)
                 self.assertTrue("TEST_KW2" in keywords)
         self.assertEqual(sricount, 2, "Received wonr number of 2 sri in metadata")
@@ -2032,7 +2032,7 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         for node in secondmetadatxml.getElementsByTagName('packet'):
             packetcount+=1
             self.assertEqual(node.getElementsByTagName('streamID')[0].childNodes[0].data,"test_streamID")
-            self.assertEqual(node.getElementsByTagName('datalength')[0].childNodes[0].data,"1500")
+            self.assertEqual(node.getElementsByTagName('datalength')[0].childNodes[0].data,"3000")
             if packetcount==1:
                 self.assertEqual(node.getElementsByTagName('EOS')[0].childNodes[0].data,"0")
             elif packetcount==2:
@@ -2138,7 +2138,7 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
             self.assertEqual(node.getElementsByTagName('streamID')[0].childNodes[0].data,"test_streamID")
             keywords = {}
             for keyword in node.getElementsByTagName('keyword'):
-                keywords[keyword.getElementsByTagName('id')[0].childNodes[0].data] = keyword.getElementsByTagName('value')[0].childNodes[0].data
+                keywords[keyword.attributes['id'].value] = keyword.childNodes[0].data
             self.assertTrue("TEST_KW1" in keywords)
             self.assertTrue("TEST_KW2" in keywords)
         self.assertEqual(sricount, 1, "Received more than 1 sri in metadata")
@@ -2148,7 +2148,7 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         for node in firstmetadataxml.getElementsByTagName('packet'):
             packetcount+=1
             self.assertEqual(node.getElementsByTagName('streamID')[0].childNodes[0].data,"test_streamID")
-            self.assertEqual(node.getElementsByTagName('datalength')[0].childNodes[0].data,"1000")
+            self.assertEqual(node.getElementsByTagName('datalength')[0].childNodes[0].data,"2000")
 
         self.assertEqual(packetcount, 3, "Expected three packets, did not get that.")
 
@@ -2161,7 +2161,7 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
             self.assertEqual(node.getElementsByTagName('streamID')[0].childNodes[0].data,"test_streamID2")
             keywords = {}
             for keyword in node.getElementsByTagName('keyword'):
-                keywords[keyword.getElementsByTagName('id')[0].childNodes[0].data] = keyword.getElementsByTagName('value')[0].childNodes[0].data
+                keywords[keyword.attributes['id'].value] = keyword.childNodes[0].data
             self.assertTrue("TEST_KW5" in keywords)
             self.assertTrue("TEST_KW2" in keywords)
         self.assertEqual(sricount, 1, "Received more than 1 sri in metadata")
@@ -2171,7 +2171,7 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         for node in secondmetadataxml.getElementsByTagName('packet'):
             packetcount+=1
             self.assertEqual(node.getElementsByTagName('streamID')[0].childNodes[0].data,"test_streamID2")
-            self.assertEqual(node.getElementsByTagName('datalength')[0].childNodes[0].data,"1000")
+            self.assertEqual(node.getElementsByTagName('datalength')[0].childNodes[0].data,"2000")
 
         self.assertEqual(packetcount, 2, "Expected three packets, did not get that.")
         

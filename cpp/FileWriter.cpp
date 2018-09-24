@@ -624,7 +624,7 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
 
             //Write packet metadata to file
             if (curFileDescIter->second.metdata_file_enabled()) {
-            	std::string packetmetadata = packet_to_XMLstring(packet->dataBuffer.size(),packet->SRI,packet->T,packet->EOS);
+            	std::string packetmetadata = packet_to_XMLstring(packet->dataBuffer.size()*sizeof(packet->dataBuffer[0]),packet->SRI,packet->T,packet->EOS);
                 filesystem.write(curFileDescIter->second.in_process_uri_metadata_filename, &packetmetadata, advanced_properties.force_flush);
 
             }
@@ -842,8 +842,8 @@ std::string FileWriter_i::sri_to_XMLstring(const BULKIO::StreamSRI& sri,const bo
     sri_string << "<yunits>" << sri.yunits << "</yunits>";
     sri_string << "<mode>" << sri.mode << "</mode>";
     for (unsigned int i = 0; i < sri.keywords.length(); i++) {
-        sri_string << "<keyword><id>" << sri.keywords[i].id << "</id>";
-        sri_string << "<value>" << ossie::any_to_string(sri.keywords[i].value) << "</value></keyword>";
+    	unsigned int typecode_name = sri.keywords[i].value.type()->kind();
+        sri_string << "<keyword id=\"" << sri.keywords[i].id << "\" type=\"" <<typecode_name<<"\">"<<ossie::any_to_string(sri.keywords[i].value)<<"</keyword>";
     }
     sri_string << "</sri>";
 
