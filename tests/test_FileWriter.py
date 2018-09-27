@@ -25,6 +25,7 @@ from ossie.utils import sb, bulkio
 from ossie.cf import CF
 import filecmp
 import struct
+import copy
 from ossie.properties import props_from_dict, props_to_dict
 from ossie.utils.bluefile import bluefile, bluefile_helpers
 from ossie.utils.bulkio import bulkio_helpers
@@ -1979,6 +1980,9 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
             sricount +=1
             self.assertEqual(node.attributes['new'].value,"true", "SRI New Attribute has wrong value")
             self.assertEqual(node.getElementsByTagName('streamID')[0].childNodes[0].data,"test_streamID")
+            self.assertAlmostEqual(float(node.getElementsByTagName('xdelta')[0].childNodes[0].data),(1.0/srate))
+            self.assertAlmostEqual(node.getElementsByTagName('xstart')[0].childNodes[0].data,'0')
+            self.assertAlmostEqual(node.getElementsByTagName('xunits')[0].childNodes[0].data,'1')
             keywords = {}
             for keyword in node.getElementsByTagName('keyword'):
                 keywords[keyword.attributes['id'].value] = keyword.childNodes[0].data
@@ -2046,6 +2050,144 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
             self.assertEqual(timecode_sent[index+3].twsec,int(timecode['twsec']))
             self.assertAlmostEqual(timecode_sent[index+3].tfsec,float(timecode['tfsec'])) 
          
+        os.remove(dataFileOut) 
+        os.remove(seconddataFileOut)
+        os.remove(metadatafile) 
+        os.remove(secondmetadatafile) 
+
+    def testMetaDataFileTimeMultipleFiles(self):
+                
+        dataFileOut = './testdata.out'
+        seconddataFileOut = dataFileOut+'-1'
+        metadatafile = dataFileOut +'.metadata.xml'
+        secondmetadatafile = seconddataFileOut +'.metadata.xml'
+        
+        # Setup FileWriter
+        comp = sb.launch('../FileWriter.spd.xml')
+        comp.destination_uri = dataFileOut
+        
+        comp.advanced_properties.enable_metadata_file=True
+        #comp.advanced_properties.existing_file = 'TRUNCATE'
+        comp.advanced_properties.use_hidden_files = False
+        comp.advanced_properties.max_file_time = 3
+        
+        #comp.file_format = 'BLUEFILE'
+        
+        comp.advanced_properties.max_file_size = "6000"
+        port = comp.getPort('dataShort_in')
+        comp.start()
+        
+        # Create an SRI with 2 keywords (1,2)
+        kws = props_from_dict({'TEST_KW1':1111,'TEST_KW2':'2222'})
+        srate = 10.0e6
+        sri1 = BULKIO.StreamSRI(hversion=1,
+                                  xstart=0,
+                                  xdelta= 1.0/srate, 
+                                  xunits=1,
+                                  subsize=0,
+                                  ystart=0.0,
+                                  ydelta=0,
+                                  yunits=1,
+                                  mode=0,
+                                  streamID="test_streamID",
+                                  blocking=False,
+                                  keywords=kws)
+        data = range(1000)
+        data2 = range(1500)
+        
+        # Push SRI
+        port.pushSRI(sri1)
+        #Push packet of data 
+        timecode_sent = []
+        timestamp = bio.timestamp.now()
+        port.pushPacket(data, timestamp, False, "test_streamID")   
+        timecode_sent.append(copy.copy(timestamp))
+        timestamp.twsec+=1
+        port.pushPacket(data, timestamp, False, "test_streamID")
+        timecode_sent.append(copy.copy(timestamp))
+        timestamp.twsec+=1
+        port.pushPacket(data, timestamp, False, "test_streamID")    
+        timecode_sent.append(copy.copy(timestamp))
+        timestamp.twsec+=1
+        port.pushPacket(data2, timestamp, True, "test_streamID")   
+        timecode_sent.append(copy.copy(timestamp))
+
+      
+        time.sleep(2)
+        
+        #This test scenario should create two files with associated metadata files. 
+        #The first should have an initial sri then three pushpackets with 1000 elements each.
+        #The second files should have an initial sri, then one pushpacket with 1500 elements, then a new SRI, and then the last pushpacket
+        
+        
+        # Parse first metadata file and check it
+        firstmetadataxml = minidom.parse(metadatafile)
+        
+        sricount = 0
+        for node in firstmetadataxml.getElementsByTagName('sri'):
+            sricount +=1
+            self.assertEqual(node.attributes['new'].value,"true", "SRI New Attribute has wrong value")
+            self.assertEqual(node.getElementsByTagName('streamID')[0].childNodes[0].data,"test_streamID")
+            self.assertAlmostEqual(float(node.getElementsByTagName('xdelta')[0].childNodes[0].data),(1.0/srate))
+            self.assertAlmostEqual(node.getElementsByTagName('xstart')[0].childNodes[0].data,'0')
+            self.assertAlmostEqual(node.getElementsByTagName('xunits')[0].childNodes[0].data,'1')
+            keywords = {}
+            for keyword in node.getElementsByTagName('keyword'):
+                keywords[keyword.attributes['id'].value] = keyword.childNodes[0].data
+            self.assertTrue("TEST_KW1" in keywords)
+            self.assertTrue("TEST_KW2" in keywords)
+        self.assertEqual(sricount, 1, "Received more than 1 sri in metadata")
+         
+        packetcount = 0
+        timecodes = []
+        for node in firstmetadataxml.getElementsByTagName('packet'):
+            packetcount+=1
+            self.assertEqual(node.getElementsByTagName('streamID')[0].childNodes[0].data,"test_streamID")
+            self.assertEqual(node.getElementsByTagName('datalength')[0].childNodes[0].data,"2000")
+            self.assertEqual(node.getElementsByTagName('EOS')[0].childNodes[0].data,"0")
+            timecodes.append({'tfsec':node.getElementsByTagName('timecode')[0].getElementsByTagName('tfsec')[0].childNodes[0].data,
+                              'twsec':node.getElementsByTagName('timecode')[0].getElementsByTagName('twsec')[0].childNodes[0].data})
+ 
+        self.assertEqual(packetcount, 3, "Expected three packets, did not get that.")
+        for index,timecode in enumerate(timecodes):
+            self.assertEqual(timecode_sent[index].twsec,int(timecode['twsec']))
+            self.assertAlmostEqual(timecode_sent[index].tfsec,float(timecode['tfsec'])) 
+  
+        # Parse second metadata file and check it
+        secondmetadatxml = minidom.parse(secondmetadatafile) 
+        sricount = 0
+        for node in secondmetadatxml.getElementsByTagName('sri'):
+            sricount +=1
+            if sricount==1:
+                #First sri of file is not new
+                self.assertEqual(node.attributes['new'].value,"false", "SRI New Attribute has wrong value")
+            self.assertEqual(node.getElementsByTagName('streamID')[0].childNodes[0].data,"test_streamID")
+            if sricount==1:
+                keywords = {}
+                for keyword in node.getElementsByTagName('keyword'):
+                    keywords[keyword.attributes['id'].value] = keyword.childNodes[0].data
+                self.assertTrue("TEST_KW1" in keywords)
+                self.assertTrue("TEST_KW2" in keywords)
+
+        self.assertEqual(sricount, 1, "Received wonr number of 2 sri in metadata")
+          
+        packetcount = 0
+        timecodes = []
+        for node in secondmetadatxml.getElementsByTagName('packet'):
+            packetcount+=1
+            self.assertEqual(node.getElementsByTagName('streamID')[0].childNodes[0].data,"test_streamID")
+            self.assertEqual(node.getElementsByTagName('datalength')[0].childNodes[0].data,"3000")
+            if packetcount==1:
+                self.assertEqual(node.getElementsByTagName('EOS')[0].childNodes[0].data,"1")
+
+            timecodes.append({'tfsec':node.getElementsByTagName('timecode')[0].getElementsByTagName('tfsec')[0].childNodes[0].data,
+                              'twsec':node.getElementsByTagName('timecode')[0].getElementsByTagName('twsec')[0].childNodes[0].data})
+ 
+        self.assertEqual(packetcount, 1, "Expected two packets, did not get that.")
+        for index,timecode in enumerate(timecodes):
+            self.assertEqual(timecode_sent[index+3].twsec,int(timecode['twsec']))
+            self.assertAlmostEqual(timecode_sent[index+3].tfsec,float(timecode['tfsec'])) 
+          
         os.remove(dataFileOut) 
         os.remove(seconddataFileOut)
         os.remove(metadatafile) 
