@@ -2049,6 +2049,19 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         for index,timecode in enumerate(timecodes):
             self.assertEqual(timecode_sent[index+3].twsec,int(timecode['twsec']))
             self.assertAlmostEqual(timecode_sent[index+3].tfsec,float(timecode['tfsec'])) 
+        
+        #Read in Data from Test File as Short
+        size = os.path.getsize(dataFileOut)
+        with open (dataFileOut, 'rb') as dataIn:
+            filedata = list(struct.unpack('h'*(size/2), dataIn.read(size)))
+        
+        size = os.path.getsize(seconddataFileOut)
+        with open (seconddataFileOut, 'rb') as dataIn:
+            filedata+= list(struct.unpack('h'*(size/2), dataIn.read(size)))        
+        
+        expectedData = data+data+data+data2+data2
+        for i in range(len(filedata)):
+            self.assertEqual(filedata[i], expectedData[i])
          
         os.remove(dataFileOut) 
         os.remove(seconddataFileOut)
@@ -2187,6 +2200,20 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         for index,timecode in enumerate(timecodes):
             self.assertEqual(timecode_sent[index+3].twsec,int(timecode['twsec']))
             self.assertAlmostEqual(timecode_sent[index+3].tfsec,float(timecode['tfsec'])) 
+        
+        
+        #Read in Data from Test File as Short
+        size = os.path.getsize(dataFileOut)
+        with open (dataFileOut, 'rb') as dataIn:
+            filedata = list(struct.unpack('h'*(size/2), dataIn.read(size)))
+        
+        size = os.path.getsize(seconddataFileOut)
+        with open (seconddataFileOut, 'rb') as dataIn:
+            filedata+= list(struct.unpack('h'*(size/2), dataIn.read(size)))   
+  
+        expectedData = data+data+data+data2
+        for i in range(len(filedata)):
+            self.assertEqual(filedata[i], expectedData[i])
           
         os.remove(dataFileOut) 
         os.remove(seconddataFileOut)
