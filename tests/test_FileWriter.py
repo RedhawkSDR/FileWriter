@@ -1981,8 +1981,8 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
             self.assertEqual(node.attributes['new'].value,"true", "SRI New Attribute has wrong value")
             self.assertEqual(node.getElementsByTagName('streamID')[0].childNodes[0].data,"test_streamID")
             self.assertAlmostEqual(float(node.getElementsByTagName('xdelta')[0].childNodes[0].data),(1.0/srate))
-            self.assertAlmostEqual(node.getElementsByTagName('xstart')[0].childNodes[0].data,'0')
-            self.assertAlmostEqual(node.getElementsByTagName('xunits')[0].childNodes[0].data,'1')
+            self.assertEqual(str(node.getElementsByTagName('xstart')[0].childNodes[0].data),'0')
+            self.assertEqual(str(node.getElementsByTagName('xunits')[0].childNodes[0].data),'1')
             keywords = {}
             for keyword in node.getElementsByTagName('keyword'):
                 keywords[keyword.attributes['id'].value] = keyword.childNodes[0].data
@@ -2160,8 +2160,8 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
             self.assertEqual(node.attributes['new'].value,"true", "SRI New Attribute has wrong value")
             self.assertEqual(node.getElementsByTagName('streamID')[0].childNodes[0].data,"test_streamID")
             self.assertAlmostEqual(float(node.getElementsByTagName('xdelta')[0].childNodes[0].data),(1.0/srate))
-            self.assertAlmostEqual(node.getElementsByTagName('xstart')[0].childNodes[0].data,'0')
-            self.assertAlmostEqual(node.getElementsByTagName('xunits')[0].childNodes[0].data,'1')
+            self.assertEqual(str(node.getElementsByTagName('xstart')[0].childNodes[0].data),'0')
+            self.assertEqual(str(node.getElementsByTagName('xunits')[0].childNodes[0].data),'1')
             keywords = {}
             for keyword in node.getElementsByTagName('keyword'):
                 keywords[keyword.attributes['id'].value] = keyword.childNodes[0].data
@@ -2259,13 +2259,13 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         
         #comp.file_format = 'BLUEFILE'
         
-        comp.advanced_properties.max_file_size = "6000"
+        #comp.advanced_properties.max_file_size = "6000"
         port = comp.getPort('dataShort_in')
         comp.start()
         
         # Create an SRI with 2 keywords (1,2)
         kws = props_from_dict({'TEST_KW1':1111,'TEST_KW2':'2222'})
-        srate = 10.0e6
+        srate = 1e3
         sri1 = BULKIO.StreamSRI(hversion=1,
                                   xstart=0,
                                   xdelta= 1.0/srate, 
@@ -2315,8 +2315,8 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
             self.assertEqual(node.attributes['new'].value,"true", "SRI New Attribute has wrong value")
             self.assertEqual(node.getElementsByTagName('streamID')[0].childNodes[0].data,"test_streamID")
             self.assertAlmostEqual(float(node.getElementsByTagName('xdelta')[0].childNodes[0].data),(1.0/srate))
-            self.assertAlmostEqual(node.getElementsByTagName('xstart')[0].childNodes[0].data,'0')
-            self.assertAlmostEqual(node.getElementsByTagName('xunits')[0].childNodes[0].data,'1')
+            self.assertEqual(str(node.getElementsByTagName('xstart')[0].childNodes[0].data),'0')
+            self.assertEqual(str(node.getElementsByTagName('xunits')[0].childNodes[0].data),'1')
             keywords = {}
             for keyword in node.getElementsByTagName('keyword'):
                 keywords[keyword.attributes['id'].value] = keyword.childNodes[0].data
