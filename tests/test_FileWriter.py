@@ -1983,6 +1983,12 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
             self.assertAlmostEqual(float(node.getElementsByTagName('xdelta')[0].childNodes[0].data),(1.0/srate))
             self.assertEqual(str(node.getElementsByTagName('xstart')[0].childNodes[0].data),'0')
             self.assertEqual(str(node.getElementsByTagName('xunits')[0].childNodes[0].data),'1')
+            self.assertEqual(str(node.getElementsByTagName('subsize')[0].childNodes[0].data),'0')
+            self.assertEqual(str(node.getElementsByTagName('ydelta')[0].childNodes[0].data),'0')
+            self.assertEqual(str(node.getElementsByTagName('ystart')[0].childNodes[0].data),'0')
+            self.assertEqual(str(node.getElementsByTagName('yunits')[0].childNodes[0].data),'1')
+            self.assertEqual(str(node.getElementsByTagName('mode')[0].childNodes[0].data),'0')
+            
             keywords = {}
             for keyword in node.getElementsByTagName('keyword'):
                 keywords[keyword.attributes['id'].value] = keyword.childNodes[0].data
@@ -2162,6 +2168,11 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
             self.assertAlmostEqual(float(node.getElementsByTagName('xdelta')[0].childNodes[0].data),(1.0/srate))
             self.assertEqual(str(node.getElementsByTagName('xstart')[0].childNodes[0].data),'0')
             self.assertEqual(str(node.getElementsByTagName('xunits')[0].childNodes[0].data),'1')
+            self.assertEqual(str(node.getElementsByTagName('subsize')[0].childNodes[0].data),'0')
+            self.assertEqual(str(node.getElementsByTagName('ydelta')[0].childNodes[0].data),'0')
+            self.assertEqual(str(node.getElementsByTagName('ystart')[0].childNodes[0].data),'0')
+            self.assertEqual(str(node.getElementsByTagName('yunits')[0].childNodes[0].data),'1')
+            self.assertEqual(str(node.getElementsByTagName('mode')[0].childNodes[0].data),'0')
             keywords = {}
             for keyword in node.getElementsByTagName('keyword'):
                 keywords[keyword.attributes['id'].value] = keyword.childNodes[0].data
@@ -2191,9 +2202,6 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
             sricount +=1
             if sricount==1:
                 #First sri of file is not new
-                self.assertEqual(node.attributes['new'].value,"true", "SRI New Attribute has wrong value")
-            elif sricount==2:
-                #Second sri of file is new
                 self.assertEqual(node.attributes['new'].value,"true", "SRI New Attribute has wrong value")
             self.assertEqual(node.getElementsByTagName('streamID')[0].childNodes[0].data,"test_streamID")
             if sricount==1:
@@ -2317,6 +2325,11 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
             self.assertAlmostEqual(float(node.getElementsByTagName('xdelta')[0].childNodes[0].data),(1.0/srate))
             self.assertEqual(str(node.getElementsByTagName('xstart')[0].childNodes[0].data),'0')
             self.assertEqual(str(node.getElementsByTagName('xunits')[0].childNodes[0].data),'1')
+            self.assertEqual(str(node.getElementsByTagName('subsize')[0].childNodes[0].data),'0')
+            self.assertEqual(str(node.getElementsByTagName('ydelta')[0].childNodes[0].data),'0')
+            self.assertEqual(str(node.getElementsByTagName('ystart')[0].childNodes[0].data),'0')
+            self.assertEqual(str(node.getElementsByTagName('yunits')[0].childNodes[0].data),'1')
+            self.assertEqual(str(node.getElementsByTagName('mode')[0].childNodes[0].data),'0')
             keywords = {}
             for keyword in node.getElementsByTagName('keyword'):
                 keywords[keyword.attributes['id'].value] = keyword.childNodes[0].data
@@ -2478,6 +2491,14 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
             sricount +=1
             self.assertEqual(node.attributes['new'].value,"true", "SRI New Attribute has wrong value")
             self.assertEqual(node.getElementsByTagName('streamID')[0].childNodes[0].data,"test_streamID")
+            self.assertAlmostEqual(float(node.getElementsByTagName('xdelta')[0].childNodes[0].data),(1.0/srate))
+            self.assertEqual(str(node.getElementsByTagName('xstart')[0].childNodes[0].data),'0')
+            self.assertEqual(str(node.getElementsByTagName('xunits')[0].childNodes[0].data),'1')
+            self.assertEqual(str(node.getElementsByTagName('subsize')[0].childNodes[0].data),'0')
+            self.assertEqual(str(node.getElementsByTagName('ydelta')[0].childNodes[0].data),'0')
+            self.assertEqual(str(node.getElementsByTagName('ystart')[0].childNodes[0].data),'0')
+            self.assertEqual(str(node.getElementsByTagName('yunits')[0].childNodes[0].data),'1')
+            self.assertEqual(str(node.getElementsByTagName('mode')[0].childNodes[0].data),'0')
             keywords = {}
             for keyword in node.getElementsByTagName('keyword'):
                 keywords[keyword.attributes['id'].value] = keyword.childNodes[0].data
@@ -2516,6 +2537,26 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
             self.assertEqual(node.getElementsByTagName('datalength')[0].childNodes[0].data,"2000")
 
         self.assertEqual(packetcount, 2, "Expected three packets, did not get that.")
+        
+        #Read in Data from Test File as Short
+        filedata = []
+        size = os.path.getsize(dataFileName1)
+        with open (dataFileName1, 'rb') as dataIn:
+            filedata = list(struct.unpack('h'*(size/2), dataIn.read(size)))
+        
+        filedata2= []
+        size = os.path.getsize(dataFileName2)
+        with open (dataFileName2, 'rb') as dataIn:
+            filedata2+= list(struct.unpack('h'*(size/2), dataIn.read(size)))   
+        
+        expectedData1 = data+data+data
+        expectedData2 = data+data
+        
+        for i in range(len(filedata)):
+            self.assertEqual(filedata[i], expectedData1[i])
+        
+        for i in range(len(filedata2)):
+            self.assertEqual(filedata2[i], expectedData2[i])
         
         os.remove(dataFileName1) 
         os.remove(dataFileName2)
