@@ -624,7 +624,7 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
 
             //Write packet metadata to file
             if (curFileDescIter->second.metdata_file_enabled()) {
-            	std::string packetmetadata = packet_to_XMLstring(write_bytes,packet->SRI,packet->T,packet->EOS);
+            	std::string packetmetadata = packet_to_XMLstring(write_bytes,packet->SRI,packet->T,packet->EOS,packet_pos-write_bytes,sizeof(packet->dataBuffer[0]));
                 filesystem.write(curFileDescIter->second.in_process_uri_metadata_filename, &packetmetadata, advanced_properties.force_flush);
 
             }
@@ -850,7 +850,7 @@ std::string FileWriter_i::sri_to_XMLstring(const BULKIO::StreamSRI& sri,const bo
     return std::string(sri_string.str());
 }
 
-std::string FileWriter_i::packet_to_XMLstring(const int packetSize, const BULKIO::StreamSRI& sri,const BULKIO::PrecisionUTCTime& timecode, const bool& eos) {
+std::string FileWriter_i::packet_to_XMLstring(const int packetSize, const BULKIO::StreamSRI& sri,const BULKIO::PrecisionUTCTime& timecode, const bool& eos,const size_t packetPosition,const size_t elementSize) {
     std::ostringstream packet_string;
     packet_string << "<packet>";
     packet_string << "<streamID>" << sri.streamID << "</streamID>";
@@ -858,12 +858,27 @@ std::string FileWriter_i::packet_to_XMLstring(const int packetSize, const BULKIO
     packet_string << "<EOS>" <<eos << "</EOS>";
     packet_string << "<timecode>";
     packet_string << "<tcmode>" << timecode.tcmode << "</tcmode>";
-    packet_string << "<tcstatus>" << timecode.tcstatus << "</tcstatus>";
-    packet_string << "<tfsec>" <<std::setprecision (15) << timecode.tfsec << "</tfsec>";
-    packet_string << "<toff>" << timecode.toff << "</toff>";
-    packet_string << "<twsec>" <<std::setprecision (15)<< timecode.twsec << "</twsec>";
-    packet_string << "</timecode>";
-    packet_string << "</packet>";
+	packet_string << "<tcstatus>" << timecode.tcstatus << "</tcstatus>";
+    if (packetPosition==0) {
+
+    	packet_string << "<tfsec>" <<std::setprecision (15) << timecode.tfsec << "</tfsec>";
+    	packet_string << "<toff>" << timecode.toff << "</toff>";
+    	packet_string << "<twsec>" <<std::setprecision (15)<< timecode.twsec << "</twsec>";
+    } else {
+    	// Create an adjusted timecode if this packet was split between two files
+    	double timeoffset = sri.xdelta*packetPosition/elementSize;
+    	double correctedtfsec  = timecode.tfsec +timeoffset;
+    	double correctedtwsec = 0.0;
+    	correctedtfsec = modf(correctedtfsec, &correctedtwsec);
+    	correctedtwsec +=timecode.twsec;
+		packet_string << "<tfsec>" <<std::setprecision (15) << correctedtfsec << "</tfsec>";
+    	packet_string << "<toff>" << timecode.toff << "</toff>";
+    	packet_string << "<twsec>" <<std::setprecision (15)<< correctedtwsec << "</twsec>";
+    }
+
+
+    	packet_string << "</timecode>";
+    	packet_string << "</packet>";
     return std::string(packet_string.str());
 
 }
