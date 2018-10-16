@@ -624,7 +624,7 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
 
             //Write packet metadata to file
             if (curFileDescIter->second.metdata_file_enabled()) {
-            	std::string packetmetadata = packet_to_XMLstring(packet->dataBuffer.size()*sizeof(packet->dataBuffer[0]),packet->SRI,packet->T,packet->EOS);
+            	std::string packetmetadata = packet_to_XMLstring(write_bytes,packet->SRI,packet->T,packet->EOS);
                 filesystem.write(curFileDescIter->second.in_process_uri_metadata_filename, &packetmetadata, advanced_properties.force_flush);
 
             }
