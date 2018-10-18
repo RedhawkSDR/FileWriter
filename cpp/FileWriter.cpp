@@ -514,8 +514,8 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
                     curFileDescIter->second.file_size_internal = filesystem.file_size(curFileDescIter->second.in_process_uri_filename);
 
                     bool open_success = filesystem.open_file(curFileDescIter->second.in_process_uri_filename, true, append);
-                    if (curFileDescIter->second.metdata_file_enabled())
-                        open_success |= filesystem.open_file(curFileDescIter->second.in_process_uri_metadata_filename, true, append);
+                    if (open_success && curFileDescIter->second.metdata_file_enabled())
+                        open_success = filesystem.open_file(curFileDescIter->second.in_process_uri_metadata_filename, true, append);
                     if (!open_success) {
                         close_file(destination_filename, packet->T, stream_id);
                         stream_to_file_mapping.erase(stream_id);
@@ -590,10 +590,39 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
             bool reached_max_size = false;
             if (maxSize_time_size > 0) {
                 size_t avail_in_file = maxSize_time_size - curFileDescIter->second.file_size_internal;
-                if (avail_in_file <= write_bytes) {
-                    write_bytes = avail_in_file;
+                if (avail_in_file == write_bytes) {
                     reached_max_size = true;
-                    LOG_DEBUG(FileWriter_i, "Reached max file size: write_bytes="<<write_bytes);
+                    LOG_DEBUG(FileWriter_i, "Reached max file size exactly: write_bytes="<<write_bytes);
+                } else if (avail_in_file < write_bytes) {
+                    LOG_DEBUG(FileWriter_i, "Reached max file size: avail_in_file="<<avail_in_file<<"  write_bytes="<<write_bytes);
+                    if (curFileDescIter->second.metdata_file_enabled()) {
+                    	// When writing metadata, do not split packets
+                    	// If this is a new (empty) file, write the full packet with a warning
+                    	// Otherwise, close this file and write packet to a new file
+                        if (new_file) { // write_bytes > maxSize_time_size) {
+                            LOG_WARN(FileWriter_i, "Packet size exceeds max file size by "<<write_bytes-maxSize_time_size);
+                            LOG_WARN(FileWriter_i, "In metadata mode, cannot split packet, exceeding max file size by "<<write_bytes-avail_in_file);
+                        } else {
+                            // set write_bytes to 0 and put entire packet in next file
+                            LOG_DEBUG(FileWriter_i, "In metadata mode and cannot fit full packet, closing file "<<avail_in_file<<" Bytes less than max.");
+                            close_file(destination_filename, packet->T, stream_id);
+                            if (advanced_properties.reset_on_max_file) {
+                                LOG_DEBUG(FileWriter_i, "Reseting on max file size...");
+                                stream_to_file_mapping.erase(stream_id);
+                                curFileIter = stream_to_file_mapping.end();
+                                destination_filename.clear();
+                                continue;
+                            } else {
+                                LOG_DEBUG(FileWriter_i, "Not reseting on max file size...");
+                                break;
+                            }
+                        }
+                    } else {
+                        // otherwise, fill to the max and put the rest in a new file
+                        write_bytes = avail_in_file;
+                    }
+                    LOG_DEBUG(FileWriter_i, "Reached max file size. Writing: ="<<write_bytes);
+                    reached_max_size = true;
                 }
             }
 
@@ -626,15 +655,13 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
             if (curFileDescIter->second.metdata_file_enabled()) {
             	std::string packetmetadata = packet_to_XMLstring(write_bytes,packet->SRI,packet->T,packet->EOS,packet_pos-write_bytes,sizeof(packet->dataBuffer[0]));
                 filesystem.write(curFileDescIter->second.in_process_uri_metadata_filename, &packetmetadata, advanced_properties.force_flush);
-
             }
 
             // Close File
             if (eos || reached_max_size) {
-                LOG_DEBUG(FileWriter_i, " *** PROCESSING EOS FOR STREAM ID : " << stream_id);
                 if (eos) {
-
-					allKeywords.length(0);
+                    LOG_DEBUG(FileWriter_i, " *** PROCESSING EOS FOR STREAM ID : " << stream_id);
+                    allKeywords.length(0);
                 }
                 close_file(destination_filename, packet->T, stream_id);
                 if (reached_max_size && advanced_properties.reset_on_max_file) {
