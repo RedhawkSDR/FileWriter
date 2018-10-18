@@ -68,25 +68,25 @@ class FileWriter_i;
 
 namespace FILE_WRITER_DOMAIN_MGR_HELPERS {
 
-	inline CF::DomainManager_var domainManager_id_to_var(std::string id) {
-		CF::DomainManager_var domainMgr_var = CF::DomainManager::_nil();
-		CosNaming::BindingIterator_var it;
-		CosNaming::BindingList_var bl;
-		CosNaming::NamingContext_var context = CosNaming::NamingContext::_narrow(ossie::corba::InitialNamingContext());
-		context->list(100, bl, it);
-		for (unsigned int ii = 0; ii < bl->length(); ++ii) {
-			try {
-				std::string domString = std::string(bl[ii].binding_name[0].id) + "/" + std::string(bl[ii].binding_name[0].id);
-				CosNaming::Name_var cosName = omni::omniURI::stringToName(domString.c_str());
-				CORBA::Object_var bobj = context->resolve(cosName);
-				domainMgr_var = CF::DomainManager::_narrow(bobj);
-				if (id.empty() || id == std::string(domainMgr_var->identifier())){
-					return domainMgr_var;
-				}
-			} catch (...) {};
-		}
-		return domainMgr_var;
-	}
+    inline CF::DomainManager_var domainManager_id_to_var(std::string id) {
+        CF::DomainManager_var domainMgr_var = CF::DomainManager::_nil();
+        CosNaming::BindingIterator_var it;
+        CosNaming::BindingList_var bl;
+        CosNaming::NamingContext_var context = CosNaming::NamingContext::_narrow(ossie::corba::InitialNamingContext());
+        context->list(100, bl, it);
+        for (unsigned int ii = 0; ii < bl->length(); ++ii) {
+            try {
+                std::string domString = std::string(bl[ii].binding_name[0].id) + "/" + std::string(bl[ii].binding_name[0].id);
+                CosNaming::Name_var cosName = omni::omniURI::stringToName(domString.c_str());
+                CORBA::Object_var bobj = context->resolve(cosName);
+                domainMgr_var = CF::DomainManager::_narrow(bobj);
+                if (id.empty() || id == std::string(domainMgr_var->identifier())){
+                    return domainMgr_var;
+                }
+            } catch (...) {};
+        }
+        return domainMgr_var;
+    }
 };
 
 enum FILE_TYPES{
@@ -94,13 +94,13 @@ enum FILE_TYPES{
     BLUEFILE = 1
 };
 struct file_struct{
-	file_struct(std::string uri_full_filename, FILE_TYPES type, double start_ws, double start_fs, bool enable_metadata, bool hidden_tmp_files,
-				const std::string& open_file_extension, const std::string& open_metadata_file_extension, const std::string& file_stream_id)
-	{
-		uri_filename = uri_full_filename;
-    	uri_metadata_filename = uri_filename + METADATA_EXTENSION;
-    	in_process_uri_filename = "";
-    	in_process_uri_metadata_filename = "";
+    file_struct(std::string uri_full_filename, FILE_TYPES type, double start_ws, double start_fs, bool enable_metadata, bool hidden_tmp_files,
+                const std::string& open_file_extension, const std::string& open_metadata_file_extension, const std::string& file_stream_id)
+    {
+        uri_filename = uri_full_filename;
+        uri_metadata_filename = uri_filename + METADATA_EXTENSION;
+        in_process_uri_filename = "";
+        in_process_uri_metadata_filename = "";
         file_size_internal = 0;
         num_writers = 1;
         file_type = type;
@@ -297,74 +297,74 @@ private:
     BULKIO::PrecisionUTCTime timer_timestamp;
 
     inline  BULKIO::PrecisionUTCTime getSystemTimestamp( double additional_time = 0.0 ) {
-    		double  whole;
-    		double  fract = modf( additional_time, &whole );
-    		struct timeval tmp_time;
-    		struct timezone tmp_tz;
-    		gettimeofday( &tmp_time, &tmp_tz );
-    		double  wsec = tmp_time.tv_sec;
-    		double  fsec = tmp_time.tv_usec / 1e6;
-    		BULKIO::PrecisionUTCTime tstamp = BULKIO::PrecisionUTCTime(  );
-    		tstamp.tcmode = 1;
-    		tstamp.tcstatus = ( short )1;
-    		tstamp.toff = 0.0;
-    		tstamp.twsec = wsec + whole;
-    		tstamp.tfsec = fsec + fract;
-    		while( tstamp.tfsec < 0 ) {
-    			tstamp.twsec -= 1.0;
-    			tstamp.tfsec += 1.0;
-    		}
-    		return tstamp;
-    	};
+            double  whole;
+            double  fract = modf( additional_time, &whole );
+            struct timeval tmp_time;
+            struct timezone tmp_tz;
+            gettimeofday( &tmp_time, &tmp_tz );
+            double  wsec = tmp_time.tv_sec;
+            double  fsec = tmp_time.tv_usec / 1e6;
+            BULKIO::PrecisionUTCTime tstamp = BULKIO::PrecisionUTCTime(  );
+            tstamp.tcmode = 1;
+            tstamp.tcstatus = ( short )1;
+            tstamp.toff = 0.0;
+            tstamp.twsec = wsec + whole;
+            tstamp.tfsec = fsec + fract;
+            while( tstamp.tfsec < 0 ) {
+                tstamp.twsec -= 1.0;
+                tstamp.tfsec += 1.0;
+            }
+            return tstamp;
+        };
 
     inline bool is_ts_invalid(const BULKIO::PrecisionUTCTime & tstamp){
-    	bool invalid = (tstamp.tcstatus == BULKIO::TCS_INVALID);
-    	invalid |= (!std::isfinite(tstamp.twsec));
-    	invalid |= (tstamp.twsec < 0 || tstamp.twsec > 1e10);
-    	invalid |= (!std::isfinite(tstamp.tfsec));
-    	invalid |= (tstamp.tfsec < 0 || tstamp.tfsec > 1e10);
-    	return invalid;
+        bool invalid = (tstamp.tcstatus == BULKIO::TCS_INVALID);
+        invalid |= (!std::isfinite(tstamp.twsec));
+        invalid |= (tstamp.twsec < 0 || tstamp.twsec > 1e10);
+        invalid |= (!std::isfinite(tstamp.tfsec));
+        invalid |= (tstamp.tfsec < 0 || tstamp.tfsec > 1e10);
+        return invalid;
     };
 
     inline  std::string time_to_string( const BULKIO::PrecisionUTCTime & timeTag, bool include_fractional = true, bool compressed = false ) {
-			double wsec = 0.0;
-			double fsec = 0.0;
-			if(!is_ts_invalid(timeTag)){
-				wsec = timeTag.twsec;
-				fsec =  timeTag.tfsec;
-			}
+            double wsec = 0.0;
+            double fsec = 0.0;
+            if(!is_ts_invalid(timeTag)){
+                wsec = timeTag.twsec;
+                fsec =  timeTag.tfsec;
+            }
 
-			time_t  _fileStartTime;
-    		struct tm *local;
-    		char    timeArray[30];
-    		_fileStartTime = ( time_t ) wsec;
-    		local = gmtime( &_fileStartTime );      //converts second since epoch to tm struct
-    		if( compressed )
-    			strftime( timeArray, 30, "%d%b%Y.%H%M%S", local );  //prints out string from tm struct
-    		else
-    			strftime( timeArray, 30, "%d-%b-%Y %H:%M:%S", local );      //prints out string from tm struct
-    		std::string time = std::string( timeArray );
-    		if( include_fractional ) {
-    			char    fractSec[30];
-				sprintf( fractSec, "%010.0f", fsec * 1e10 );
-    			time += "." + std::string( fractSec );
-    		}
-    		return time;
-    	}
+            time_t  _fileStartTime;
+            struct tm *local;
+            char    timeArray[30];
+            _fileStartTime = ( time_t ) wsec;
+            local = gmtime( &_fileStartTime );      //converts second since epoch to tm struct
+            if( compressed )
+                strftime( timeArray, 30, "%d%b%Y.%H%M%S", local );  //prints out string from tm struct
+            else
+                strftime( timeArray, 30, "%d-%b-%Y %H:%M:%S", local );      //prints out string from tm struct
+            std::string time = std::string( timeArray );
+            if( include_fractional ) {
+                char    fractSec[30];
+                sprintf( fractSec, "%010.0f", fsec * 1e10 );
+                time += "." + std::string( fractSec );
+            }
+            return time;
+        }
 
     template <typename MYTYPE> MYTYPE getKeywordValueByID(BULKIO::StreamSRI *sri, CORBA::String_member id) throw(std::logic_error){
-    	MYTYPE value;
-    	for (unsigned int i = 0; i < sri->keywords.length(); i++) {
-    		if (!strcmp(sri->keywords[i].id, id)) {
-    			sri->keywords[i].value >>= value;
-    			return value;
-    		}
-    	}
-    	throw std::logic_error("KEYWORD NOT FOUND!");
+        MYTYPE value;
+        for (unsigned int i = 0; i < sri->keywords.length(); i++) {
+            if (!strcmp(sri->keywords[i].id, id)) {
+                sri->keywords[i].value >>= value;
+                return value;
+            }
+        }
+        throw std::logic_error("KEYWORD NOT FOUND!");
     }
 
     template <typename MYTYPE> bool updateIfFound_KeywordValueByID(BULKIO::StreamSRI *sri, CORBA::String_member id, MYTYPE& current) throw(std::logic_error){
-    	try {
+        try {
             MYTYPE value = getKeywordValueByID<MYTYPE>(sri, id);
             current = value;
             return true;

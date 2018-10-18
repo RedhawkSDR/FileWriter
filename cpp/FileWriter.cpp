@@ -551,10 +551,10 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
 
                     // Initialize Metadata File
                     if (curFileDescIter->second.metdata_file_enabled()){
-                    	std::ostringstream openXML;
-                    	openXML << "<FileWriter_metadata datafile=\""<< curFileDescIter->second.basename<<"\">";
+                        std::ostringstream openXML;
+                        openXML << "<FileWriter_metadata datafile=\""<< curFileDescIter->second.basename<<"\">";
                         std::string openXML_str = openXML.str();
-                    	filesystem.write(curFileDescIter->second.in_process_uri_metadata_filename, &openXML_str, advanced_properties.force_flush);
+                        filesystem.write(curFileDescIter->second.in_process_uri_metadata_filename, &openXML_str, advanced_properties.force_flush);
                     }
 
                     // BLUEFILE
@@ -611,9 +611,9 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
                 } else if (avail_in_file < write_bytes) {
                     LOG_DEBUG(FileWriter_i, "Reached max file size: avail_in_file="<<avail_in_file<<"  write_bytes="<<write_bytes);
                     if (curFileDescIter->second.metdata_file_enabled()) {
-                    	// When writing metadata, do not split packets
-                    	// If this is a new (empty) file, write the full packet with a warning
-                    	// Otherwise, close this file and write packet to a new file
+                        // When writing metadata, do not split packets
+                        // If this is a new (empty) file, write the full packet with a warning
+                        // Otherwise, close this file and write packet to a new file
                         if (new_file) { // write_bytes > maxSize_time_size) {
                             LOG_WARN(FileWriter_i, "Packet size exceeds max file size by "<<write_bytes-maxSize_time_size);
                             LOG_WARN(FileWriter_i, "In metadata mode, cannot split packet, exceeding max file size by "<<write_bytes-avail_in_file);
@@ -661,14 +661,14 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
                     filesystem.write(curFileDescIter->second.in_process_uri_metadata_filename, &metadata, advanced_properties.force_flush);
                 }
                 if (curFileDescIter->second.file_type == BLUEFILE) {
-                	mergeKeywords(curFileDescIter->second.lastSRI.keywords);
-                	curFileDescIter->second.lastSRI.keywords = allKeywords;
+                    mergeKeywords(curFileDescIter->second.lastSRI.keywords);
+                    curFileDescIter->second.lastSRI.keywords = allKeywords;
                 }
             }
 
             //Write packet metadata to file
             if (curFileDescIter->second.metdata_file_enabled()) {
-            	std::string packetmetadata = packet_to_XMLstring(write_bytes,packet->SRI,packet->T,packet->EOS,packet_pos-write_bytes,sizeof(packet->dataBuffer[0]));
+                std::string packetmetadata = packet_to_XMLstring(write_bytes,packet->SRI,packet->T,packet->EOS,packet_pos-write_bytes,sizeof(packet->dataBuffer[0]));
                 filesystem.write(curFileDescIter->second.in_process_uri_metadata_filename, &packetmetadata, advanced_properties.force_flush);
             }
 
@@ -870,9 +870,9 @@ std::string FileWriter_i::stream_to_basename(const std::string & stream_id, cons
 std::string FileWriter_i::sri_to_XMLstring(const BULKIO::StreamSRI& sri,const bool newsri) {
     std::ostringstream sri_string;
     if (newsri) {
-    	sri_string << "<sri new=\"true\">";
+        sri_string << "<sri new=\"true\">";
     } else {
-    	sri_string << "<sri new=\"false\">";
+        sri_string << "<sri new=\"false\">";
     }
     sri_string << "<streamID>" << sri.streamID << "</streamID>";
     sri_string << "<hversion>" << sri.hversion << "</hversion>";
@@ -885,7 +885,7 @@ std::string FileWriter_i::sri_to_XMLstring(const BULKIO::StreamSRI& sri,const bo
     sri_string << "<yunits>" << sri.yunits << "</yunits>";
     sri_string << "<mode>" << sri.mode << "</mode>";
     for (unsigned int i = 0; i < sri.keywords.length(); i++) {
-    	unsigned int typecode_name = sri.keywords[i].value.type()->kind();
+        unsigned int typecode_name = sri.keywords[i].value.type()->kind();
         sri_string << "<keyword id=\"" << sri.keywords[i].id << "\" type=\"" <<typecode_name<<"\">"<<ossie::any_to_string(sri.keywords[i].value)<<"</keyword>";
     }
     sri_string << "</sri>";
@@ -901,27 +901,27 @@ std::string FileWriter_i::packet_to_XMLstring(const int packetSize, const BULKIO
     packet_string << "<EOS>" <<eos << "</EOS>";
     packet_string << "<timecode>";
     packet_string << "<tcmode>" << timecode.tcmode << "</tcmode>";
-	packet_string << "<tcstatus>" << timecode.tcstatus << "</tcstatus>";
+    packet_string << "<tcstatus>" << timecode.tcstatus << "</tcstatus>";
     if (packetPosition==0) {
 
-    	packet_string << "<tfsec>" <<std::setprecision (15) << timecode.tfsec << "</tfsec>";
-    	packet_string << "<toff>" << timecode.toff << "</toff>";
-    	packet_string << "<twsec>" <<std::setprecision (15)<< timecode.twsec << "</twsec>";
+        packet_string << "<tfsec>" <<std::setprecision (15) << timecode.tfsec << "</tfsec>";
+        packet_string << "<toff>" << timecode.toff << "</toff>";
+        packet_string << "<twsec>" <<std::setprecision (15)<< timecode.twsec << "</twsec>";
     } else {
-    	// Create an adjusted timecode if this packet was split between two files
-    	double timeoffset = sri.xdelta*packetPosition/elementSize;
-    	double correctedtfsec  = timecode.tfsec +timeoffset;
-    	double correctedtwsec = 0.0;
-    	correctedtfsec = modf(correctedtfsec, &correctedtwsec);
-    	correctedtwsec +=timecode.twsec;
-		packet_string << "<tfsec>" <<std::setprecision (15) << correctedtfsec << "</tfsec>";
-    	packet_string << "<toff>" << timecode.toff << "</toff>";
-    	packet_string << "<twsec>" <<std::setprecision (15)<< correctedtwsec << "</twsec>";
+        // Create an adjusted timecode if this packet was split between two files
+        double timeoffset = sri.xdelta*packetPosition/elementSize;
+        double correctedtfsec  = timecode.tfsec +timeoffset;
+        double correctedtwsec = 0.0;
+        correctedtfsec = modf(correctedtfsec, &correctedtwsec);
+        correctedtwsec +=timecode.twsec;
+        packet_string << "<tfsec>" <<std::setprecision (15) << correctedtfsec << "</tfsec>";
+        packet_string << "<toff>" << timecode.toff << "</toff>";
+        packet_string << "<twsec>" <<std::setprecision (15)<< correctedtwsec << "</twsec>";
     }
 
 
-    	packet_string << "</timecode>";
-    	packet_string << "</packet>";
+        packet_string << "</timecode>";
+        packet_string << "</packet>";
     return std::string(packet_string.str());
 
 }
@@ -1147,26 +1147,26 @@ size_t FileWriter_i::sizeString_to_longBytes(std::string size) {
 
 void FileWriter_i::mergeKeywords(BULKIO::StreamSRI::_keywords_seq newkeywords) {
 
-	for (unsigned int i = 0; i<newkeywords.length(); i++) {
-		bool found = false;
-		for (unsigned int j = 0; j<allKeywords.length(); j++) {
-			if (!strcmp(newkeywords[i].id,allKeywords[j].id)) {
-				//Keywords already in List, update value
-				LOG_DEBUG(FileWriter_i, "  mergeKeywords: Keywords already in List, update value " << newkeywords[i].id)
-				allKeywords[j].value = newkeywords[i].value;
-				found=true;
-				break;
-			}
-		}
-		if (!found) {
-			//Keyword not already in list of all keywords so add it
-			LOG_DEBUG(FileWriter_i, "  mergeKeywords: Adding Keyword " << newkeywords[i].id)
-			allKeywords.length(allKeywords.length()+1);
-			allKeywords[allKeywords.length()-1] = newkeywords[i];
+    for (unsigned int i = 0; i<newkeywords.length(); i++) {
+        bool found = false;
+        for (unsigned int j = 0; j<allKeywords.length(); j++) {
+            if (!strcmp(newkeywords[i].id,allKeywords[j].id)) {
+                //Keywords already in List, update value
+                LOG_DEBUG(FileWriter_i, "  mergeKeywords: Keywords already in List, update value " << newkeywords[i].id)
+                allKeywords[j].value = newkeywords[i].value;
+                found=true;
+                break;
+            }
+        }
+        if (!found) {
+            //Keyword not already in list of all keywords so add it
+            LOG_DEBUG(FileWriter_i, "  mergeKeywords: Adding Keyword " << newkeywords[i].id)
+            allKeywords.length(allKeywords.length()+1);
+            allKeywords[allKeywords.length()-1] = newkeywords[i];
 
-		}
+        }
 
-	}
+    }
 
 };
 
