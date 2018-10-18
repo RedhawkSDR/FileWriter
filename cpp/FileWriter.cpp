@@ -170,6 +170,15 @@ void FileWriter_i::advanced_propertiesChanged(const advanced_properties_struct &
     if (oldValue.max_file_size != newValue.max_file_size) {
         maxSize = sizeString_to_longBytes(newValue.max_file_size);
     }
+    if (newValue.enable_metadata_file && newValue.existing_file == "APPEND") {
+        // This is the only combo that absolutely won't work
+        // Log a warning and reset to the old values
+        // Note: setting to oldValue will have no affect if newValue was unchanged from oldValue
+        //       so don't waste time checking to see what's changed
+        LOG_WARN(FileWriter_i, "APPEND mode for existing files and meta data file mode enabled are incompatible settings.");
+        advanced_properties.enable_metadata_file = oldValue.enable_metadata_file;
+        advanced_properties.existing_file = oldValue.existing_file;
+    }
 }
 
 void FileWriter_i::recording_timerChanged(const std::vector<timer_struct_struct> &oldValue, const std::vector<timer_struct_struct> &newValue) {
@@ -489,9 +498,15 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
                         } while (filesystem.exists(tmpFN) && counter <= 1024);
                         destination_filename = tmpFN;
                         if (filesystem.exists(destination_filename))
-                            throw std::logic_error("Cannot rename file to an available name. Dropping Reset of Packet!");
+                            throw std::logic_error("Cannot rename file to an available name. Dropping Rest of Packet!");
                     } else if (existing_file == "APPEND") {
-                        append = true;
+                        // Cannot append if metadata file mode is enabled
+                        if (advanced_properties.enable_metadata_file) {
+                            LOG_ERROR(FileWriter_i,"APPEND mode for existing files and meta data file mode enabled are incompatible settings. Dropping Packet!");
+                            throw std::logic_error("APPEND mode for existing files and meta data file mode enabled are incompatible settings. Dropping Packet!");
+                        } else {
+                            append = true;
+                        }
                     }
                 }
 
@@ -677,6 +692,7 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
         }
         catch (const std::logic_error & error) {
             LOG_DEBUG(FileWriter_i, error.what());
+            break;
         }
         catch (...) {
             LOG_DEBUG(FileWriter_i, "Caught unknown exception in service function loop");
