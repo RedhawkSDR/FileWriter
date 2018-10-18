@@ -29,8 +29,8 @@ Prefix:         %{_prefix}
 %define _infodir       %{_prefix}/info
 
 Name:           rh.FileWriter
-Version:        4.1.0
-Release:        4%{?dist}
+Version:        4.2.0
+Release:        1%{?dist}
 Summary:        Component %{name}
 
 Group:          REDHAWK/Components
