@@ -2426,11 +2426,12 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         comp.start()
         
         # Create an SRI with 2 keywords (1,2)
-        kws = props_from_dict({'TEST_KW1':1111,'TEST_KW2':'2222'})
-        srate = 10.0e6
+        kws1 = {'TEST_KW1':1111,'TEST_KW2':'22'}
+        kws1_props = props_from_dict(kws1)
+        srate1 = 10.0e6
         sri1 = BULKIO.StreamSRI(hversion=1,
                                   xstart=0,
-                                  xdelta= 1.0/srate, 
+                                  xdelta= 1.0/srate1, 
                                   xunits=1,
                                   subsize=0,
                                   ystart=0.0,
@@ -2439,13 +2440,14 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
                                   mode=0,
                                   streamID="test_streamID",
                                   blocking=False,
-                                  keywords=kws)
+                                  keywords=kws1_props)
         
-        kws = props_from_dict({'TEST_KW5':5555,'TEST_KW2':'2222'})
-        srate = 20.0e6
+        kws2 = {'TEST_KW5':5555,'TEST_KW2':'2222'}
+        kws2_prop = props_from_dict(kws2)
+        srate2 = 20.0e6
         sri2 = BULKIO.StreamSRI(hversion=1,
                                   xstart=0,
-                                  xdelta= 1.0/srate, 
+                                  xdelta= 1.0/srate2, 
                                   xunits=1,
                                   subsize=0,
                                   ystart=0.0,
@@ -2454,7 +2456,7 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
                                   mode=0,
                                   streamID="test_streamID2",
                                   blocking=False,
-                                  keywords=kws)
+                                  keywords=kws2_prop)
         # Push SRI
         port.pushSRI(sri1)
         
@@ -2483,7 +2485,7 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         
         time.sleep(1)    
         
-                # Parse first metadata file and check it
+        # Parse first metadata file and check it
         firstmetadataxml = minidom.parse(metadatafile)
        
         sricount = 0
@@ -2491,7 +2493,7 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
             sricount +=1
             self.assertEqual(node.attributes['new'].value,"true", "SRI New Attribute has wrong value")
             self.assertEqual(node.getElementsByTagName('streamID')[0].childNodes[0].data,"test_streamID")
-            self.assertAlmostEqual(float(node.getElementsByTagName('xdelta')[0].childNodes[0].data),(1.0/srate))
+            self.assertAlmostEqual(float(node.getElementsByTagName('xdelta')[0].childNodes[0].data),(1.0/srate1))
             self.assertEqual(str(node.getElementsByTagName('xstart')[0].childNodes[0].data),'0')
             self.assertEqual(str(node.getElementsByTagName('xunits')[0].childNodes[0].data),'1')
             self.assertEqual(str(node.getElementsByTagName('subsize')[0].childNodes[0].data),'0')
@@ -2503,7 +2505,9 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
             for keyword in node.getElementsByTagName('keyword'):
                 keywords[keyword.attributes['id'].value] = keyword.childNodes[0].data
             self.assertTrue("TEST_KW1" in keywords)
+            self.assertEqual(int(keywords["TEST_KW1"]), kws1["TEST_KW1"])
             self.assertTrue("TEST_KW2" in keywords)
+            self.assertEqual(keywords["TEST_KW2"], kws1["TEST_KW2"])
         self.assertEqual(sricount, 1, "Received more than 1 sri in metadata")
         
         packetcount = 0
@@ -2515,6 +2519,7 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
 
         self.assertEqual(packetcount, 3, "Expected three packets, did not get that.")
 
+        # Parse second metadata file and check it
         secondmetadataxml = minidom.parse(secondmetadatafile)
        
         sricount = 0
@@ -2522,11 +2527,21 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
             sricount +=1
             self.assertEqual(node.attributes['new'].value,"true", "SRI New Attribute has wrong value")
             self.assertEqual(node.getElementsByTagName('streamID')[0].childNodes[0].data,"test_streamID2")
+            self.assertAlmostEqual(float(node.getElementsByTagName('xdelta')[0].childNodes[0].data),(1.0/srate2))
+            self.assertEqual(str(node.getElementsByTagName('xstart')[0].childNodes[0].data),'0')
+            self.assertEqual(str(node.getElementsByTagName('xunits')[0].childNodes[0].data),'1')
+            self.assertEqual(str(node.getElementsByTagName('subsize')[0].childNodes[0].data),'0')
+            self.assertEqual(str(node.getElementsByTagName('ydelta')[0].childNodes[0].data),'0')
+            self.assertEqual(str(node.getElementsByTagName('ystart')[0].childNodes[0].data),'0')
+            self.assertEqual(str(node.getElementsByTagName('yunits')[0].childNodes[0].data),'1')
+            self.assertEqual(str(node.getElementsByTagName('mode')[0].childNodes[0].data),'0')
             keywords = {}
             for keyword in node.getElementsByTagName('keyword'):
                 keywords[keyword.attributes['id'].value] = keyword.childNodes[0].data
             self.assertTrue("TEST_KW5" in keywords)
+            self.assertEqual(int(keywords["TEST_KW5"]), kws2["TEST_KW5"])
             self.assertTrue("TEST_KW2" in keywords)
+            self.assertEqual(keywords["TEST_KW2"], kws2["TEST_KW2"])
         self.assertEqual(sricount, 1, "Received more than 1 sri in metadata")
         
         packetcount = 0
@@ -2536,7 +2551,7 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
             self.assertEqual(node.getElementsByTagName('streamID')[0].childNodes[0].data,"test_streamID2")
             self.assertEqual(node.getElementsByTagName('datalength')[0].childNodes[0].data,"2000")
 
-        self.assertEqual(packetcount, 2, "Expected three packets, did not get that.")
+        self.assertEqual(packetcount, 2, "Expected two packets, did not get that.")
         
         #Read in Data from Test File as Short
         filedata = []
