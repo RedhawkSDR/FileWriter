@@ -2154,7 +2154,7 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         
         #This test scenario should create two files with associated metadata files. 
         #The first should have an initial sri then three pushpackets with 1000 elements each.
-        #The second files should have an initial sri, then one pushpacket with 1500 elements, then a new SRI, and then the last pushpacket
+        #The second files should have an initial sri, then two pushpacket with 1500 elements
         
         
         # Parse first metadata file and check it
@@ -2201,7 +2201,7 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         for node in secondmetadatxml.getElementsByTagName('sri'):
             sricount +=1
             if sricount==1:
-                #First sri of file is not new
+                #The second File was created by a pushSRI so the SRI is new.
                 self.assertEqual(node.attributes['new'].value,"true", "SRI New Attribute has wrong value")
             self.assertEqual(node.getElementsByTagName('streamID')[0].childNodes[0].data,"test_streamID")
             if sricount==1:
