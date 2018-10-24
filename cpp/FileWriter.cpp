@@ -869,7 +869,6 @@ std::string FileWriter_i::stream_to_basename(const std::string & stream_id, cons
 
 std::string FileWriter_i::sri_to_XMLstring(const BULKIO::StreamSRI& sri,const bool newsri) {
     std::ostringstream sri_string;
-    sri_string << std::setprecision (15);
     if (newsri) {
         sri_string << "<sri new=\"true\">";
     } else {
@@ -877,14 +876,16 @@ std::string FileWriter_i::sri_to_XMLstring(const BULKIO::StreamSRI& sri,const bo
     }
     sri_string << "<streamID>" << sri.streamID << "</streamID>";
     sri_string << "<hversion>" << sri.hversion << "</hversion>";
-    sri_string << "<xstart>"   << sri.xstart   << "</xstart>";
-    sri_string << "<xdelta>"   << sri.xdelta   << "</xdelta>";
     sri_string << "<xunits>"   << sri.xunits   << "</xunits>";
     sri_string << "<subsize>"  << sri.subsize  << "</subsize>";
-    sri_string << "<ystart>"   << sri.ystart   << "</ystart>";
-    sri_string << "<ydelta>"   << sri.ydelta   << "</ydelta>";
     sri_string << "<yunits>"   << sri.yunits   << "</yunits>";
     sri_string << "<mode>"     << sri.mode     << "</mode>";
+    sri_string << std::fixed << std::setprecision(15); // The rest of the numbers will be std::fixed to avoid std::scientific
+    // this is how it would be reset:  << std::resetiosflags(std::ios_base::floatfield) << std::setprecision(15)
+    sri_string << "<xstart>"   << sri.xstart   << "</xstart>";
+    sri_string << "<xdelta>"   << sri.xdelta   << "</xdelta>";
+    sri_string << "<ystart>"   << sri.ystart   << "</ystart>";
+    sri_string << "<ydelta>"   << sri.ydelta   << "</ydelta>";
     for (unsigned int i = 0; i < sri.keywords.length(); i++) {
         unsigned int typecode_name = sri.keywords[i].value.type()->kind();
         sri_string << "<keyword id=\"" << sri.keywords[i].id << "\" type=\"" << typecode_name << "\">";
@@ -895,7 +896,7 @@ std::string FileWriter_i::sri_to_XMLstring(const BULKIO::StreamSRI& sri,const bo
         switch (typecode_name) {
         case CORBA::tk_float:
             sri.keywords[i].value >>= tmpFloat;
-            sri_string << tmpFloat;
+            sri_string << std::setprecision(7) << tmpFloat << std::setprecision(15);
             break;
         case CORBA::tk_double:
             sri.keywords[i].value >>= tmpDouble;
@@ -918,17 +919,19 @@ std::string FileWriter_i::sri_to_XMLstring(const BULKIO::StreamSRI& sri,const bo
 std::string FileWriter_i::packet_to_XMLstring(const int packetSize, const BULKIO::StreamSRI& sri,const BULKIO::PrecisionUTCTime& timecode, const bool& eos,const size_t packetPosition,const size_t elementSize) {
     std::ostringstream packet_string;
     packet_string << "<packet>";
-    packet_string << "<streamID>" << sri.streamID << "</streamID>";
-    packet_string << "<datalength>" << packetSize << "</datalength>";
-    packet_string << "<EOS>" <<eos << "</EOS>";
+    packet_string << "<streamID>"   << sri.streamID << "</streamID>";
+    packet_string << "<datalength>" << packetSize   << "</datalength>";
+    packet_string << "<EOS>"        << eos          << "</EOS>";
     packet_string << "<timecode>";
-    packet_string << "<tcmode>" << timecode.tcmode << "</tcmode>";
-    packet_string << "<tcstatus>" << timecode.tcstatus << "</tcstatus>";
+    packet_string << "<tcmode>"     << timecode.tcmode   << "</tcmode>";
+    packet_string << "<tcstatus>"   << timecode.tcstatus << "</tcstatus>";
+    packet_string << std::setprecision(15); // The rest of the numbers will have 15 digits of precision
     if (packetPosition==0) {
-
-        packet_string << "<tfsec>" <<std::setprecision (15) << timecode.tfsec << "</tfsec>";
-        packet_string << "<toff>" << timecode.toff << "</toff>";
-        packet_string << "<twsec>" <<std::setprecision (15)<< timecode.twsec << "</twsec>";
+        packet_string << "<twsec>" << timecode.twsec << "</twsec>";
+        packet_string << std::fixed; // The rest of the numbers will be std::fixed to avoid std::scientific
+        // this is how it would be reset:  << std::resetiosflags(std::ios_base::floatfield) << std::setprecision(15)
+        packet_string << "<tfsec>" << timecode.tfsec << "</tfsec>";
+        packet_string << "<toff>"  << timecode.toff  << "</toff>";
     } else {
         // Create an adjusted timecode if this packet was split between two files
         double timeoffset = sri.xdelta*packetPosition/elementSize;
@@ -936,14 +939,15 @@ std::string FileWriter_i::packet_to_XMLstring(const int packetSize, const BULKIO
         double correctedtwsec = 0.0;
         correctedtfsec = modf(correctedtfsec, &correctedtwsec);
         correctedtwsec +=timecode.twsec;
-        packet_string << "<tfsec>" <<std::setprecision (15) << correctedtfsec << "</tfsec>";
-        packet_string << "<toff>" << timecode.toff << "</toff>";
-        packet_string << "<twsec>" <<std::setprecision (15)<< correctedtwsec << "</twsec>";
+        packet_string << "<twsec>" << correctedtwsec << "</twsec>";
+        packet_string << std::fixed; // The rest of the numbers will be std::fixed to avoid std::scientific
+        // this is how it would be reset:  << std::resetiosflags(std::ios_base::floatfield) << std::setprecision(15)
+        packet_string << "<tfsec>" << correctedtfsec << "</tfsec>";
+        packet_string << "<toff>"  << timecode.toff  << "</toff>";
     }
 
-
-        packet_string << "</timecode>";
-        packet_string << "</packet>";
+    packet_string << "</timecode>";
+    packet_string << "</packet>";
     return std::string(packet_string.str());
 
 }

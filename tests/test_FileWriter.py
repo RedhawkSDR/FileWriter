@@ -1981,13 +1981,13 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
             self.assertEqual(node.attributes['new'].value,"true", "SRI New Attribute has wrong value")
             self.assertEqual(node.getElementsByTagName('streamID')[0].childNodes[0].data,"test_streamID")
             self.assertAlmostEqual(float(node.getElementsByTagName('xdelta')[0].childNodes[0].data),(1.0/srate))
-            self.assertEqual(str(node.getElementsByTagName('xstart')[0].childNodes[0].data),'0')
-            self.assertEqual(str(node.getElementsByTagName('xunits')[0].childNodes[0].data),'1')
-            self.assertEqual(str(node.getElementsByTagName('subsize')[0].childNodes[0].data),'0')
-            self.assertEqual(str(node.getElementsByTagName('ydelta')[0].childNodes[0].data),'0')
-            self.assertEqual(str(node.getElementsByTagName('ystart')[0].childNodes[0].data),'0')
-            self.assertEqual(str(node.getElementsByTagName('yunits')[0].childNodes[0].data),'1')
-            self.assertEqual(str(node.getElementsByTagName('mode')[0].childNodes[0].data),'0')
+            self.assertEqual(float(node.getElementsByTagName('xstart')[0].childNodes[0].data),0.0)
+            self.assertEqual(int(node.getElementsByTagName('xunits')[0].childNodes[0].data),1)
+            self.assertEqual(int(node.getElementsByTagName('subsize')[0].childNodes[0].data),0)
+            self.assertEqual(float(node.getElementsByTagName('ydelta')[0].childNodes[0].data),0.0)
+            self.assertEqual(float(node.getElementsByTagName('ystart')[0].childNodes[0].data),0.0)
+            self.assertEqual(int(node.getElementsByTagName('yunits')[0].childNodes[0].data),1)
+            self.assertEqual(int(node.getElementsByTagName('mode')[0].childNodes[0].data),0)
             
             keywords = {}
             for keyword in node.getElementsByTagName('keyword'):
@@ -2166,14 +2166,14 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
             self.assertEqual(node.attributes['new'].value,"true", "SRI New Attribute has wrong value")
             self.assertEqual(node.getElementsByTagName('streamID')[0].childNodes[0].data,"test_streamID")
             self.assertAlmostEqual(float(node.getElementsByTagName('xdelta')[0].childNodes[0].data),(1.0/srate))
-            self.assertEqual(str(node.getElementsByTagName('hversion')[0].childNodes[0].data),'1')
-            self.assertEqual(str(node.getElementsByTagName('xstart')[0].childNodes[0].data),'0')
-            self.assertEqual(str(node.getElementsByTagName('xunits')[0].childNodes[0].data),'1')
-            self.assertEqual(str(node.getElementsByTagName('subsize')[0].childNodes[0].data),'0')
-            self.assertEqual(str(node.getElementsByTagName('ydelta')[0].childNodes[0].data),'0')
-            self.assertEqual(str(node.getElementsByTagName('ystart')[0].childNodes[0].data),'0')
-            self.assertEqual(str(node.getElementsByTagName('yunits')[0].childNodes[0].data),'1')
-            self.assertEqual(str(node.getElementsByTagName('mode')[0].childNodes[0].data),'0')
+            self.assertEqual(int(node.getElementsByTagName('hversion')[0].childNodes[0].data),1)
+            self.assertEqual(float(node.getElementsByTagName('xstart')[0].childNodes[0].data),0.0)
+            self.assertEqual(int(node.getElementsByTagName('xunits')[0].childNodes[0].data),1)
+            self.assertEqual(int(node.getElementsByTagName('subsize')[0].childNodes[0].data),0)
+            self.assertEqual(float(node.getElementsByTagName('ydelta')[0].childNodes[0].data),0.0)
+            self.assertEqual(float(node.getElementsByTagName('ystart')[0].childNodes[0].data),0.0)
+            self.assertEqual(int(node.getElementsByTagName('yunits')[0].childNodes[0].data),1)
+            self.assertEqual(int(node.getElementsByTagName('mode')[0].childNodes[0].data),0)
             keywords = {}
             for keyword in node.getElementsByTagName('keyword'):
                 keywords[keyword.attributes['id'].value] = keyword.childNodes[0].data
@@ -2296,16 +2296,16 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         timecode_sent = []
         timestamp = bio.timestamp.now()
         port.pushPacket(data, timestamp, False, "test_streamID")   
-        timecode_sent.append(copy.copy(timestamp))
-        timestamp.twsec+=1
+        timecode_sent.append(timestamp)
+        timestamp = bio.timestamp.now()
         port.pushPacket(data, timestamp, False, "test_streamID")
-        timecode_sent.append(copy.copy(timestamp))
-        timestamp.twsec+=1
+        timecode_sent.append(timestamp)
+        timestamp = bio.timestamp.now()
         port.pushPacket(data, timestamp, False, "test_streamID")    
-        timecode_sent.append(copy.copy(timestamp))
-        timestamp.twsec+=1
+        timecode_sent.append(timestamp)
+        timestamp = bio.timestamp.now()
         port.pushPacket(data2, timestamp, True, "test_streamID")   
-        timecode_sent.append(copy.copy(timestamp))
+        timecode_sent.append(timestamp)
 
       
         time.sleep(2)
@@ -2324,14 +2324,14 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
             self.assertEqual(node.attributes['new'].value,"true", "SRI New Attribute has wrong value")
             self.assertEqual(node.getElementsByTagName('streamID')[0].childNodes[0].data,"test_streamID")
             self.assertAlmostEqual(float(node.getElementsByTagName('xdelta')[0].childNodes[0].data),(1.0/srate))
-            self.assertEqual(str(node.getElementsByTagName('hversion')[0].childNodes[0].data),'1')
-            self.assertEqual(str(node.getElementsByTagName('xstart')[0].childNodes[0].data),'0')
-            self.assertEqual(str(node.getElementsByTagName('xunits')[0].childNodes[0].data),'1')
-            self.assertEqual(str(node.getElementsByTagName('subsize')[0].childNodes[0].data),'0')
-            self.assertEqual(str(node.getElementsByTagName('ydelta')[0].childNodes[0].data),'0')
-            self.assertEqual(str(node.getElementsByTagName('ystart')[0].childNodes[0].data),'0')
-            self.assertEqual(str(node.getElementsByTagName('yunits')[0].childNodes[0].data),'1')
-            self.assertEqual(str(node.getElementsByTagName('mode')[0].childNodes[0].data),'0')
+            self.assertEqual(int(node.getElementsByTagName('hversion')[0].childNodes[0].data),1)
+            self.assertEqual(float(node.getElementsByTagName('xstart')[0].childNodes[0].data),0.0)
+            self.assertEqual(int(node.getElementsByTagName('xunits')[0].childNodes[0].data),1)
+            self.assertEqual(int(node.getElementsByTagName('subsize')[0].childNodes[0].data),0)
+            self.assertEqual(float(node.getElementsByTagName('ydelta')[0].childNodes[0].data),0.0)
+            self.assertEqual(float(node.getElementsByTagName('ystart')[0].childNodes[0].data),0.0)
+            self.assertEqual(int(node.getElementsByTagName('yunits')[0].childNodes[0].data),1)
+            self.assertEqual(int(node.getElementsByTagName('mode')[0].childNodes[0].data),0)
             keywords = {}
             for keyword in node.getElementsByTagName('keyword'):
                 keywords[keyword.attributes['id'].value] = keyword.childNodes[0].data
@@ -2351,8 +2351,10 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
  
         self.assertEqual(packetcount, 3, "Expected three packets, did not get that.")
         for index,timecode in enumerate(timecodes):
-            self.assertEqual(timecode_sent[index].twsec,int(timecode['twsec']))
-            self.assertAlmostEqual(timecode_sent[index].tfsec,float(timecode['tfsec'])) 
+            self.assertEqual(int(timecode['twsec']), timecode_sent[index].twsec)
+            self.assertEqual(timecode['twsec'], '{0:.0f}'.format(timecode_sent[index].twsec))
+            self.assertAlmostEqual(float(timecode['tfsec']), timecode_sent[index].tfsec)
+            self.assertEqual(timecode['tfsec'], '{0:.15f}'.format(timecode_sent[index].tfsec))
   
         # Parse second metadata file and check it
         secondmetadatxml = minidom.parse(secondmetadatafile) 
@@ -2384,11 +2386,12 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
             timecodes.append({'tfsec':node.getElementsByTagName('timecode')[0].getElementsByTagName('tfsec')[0].childNodes[0].data,
                               'twsec':node.getElementsByTagName('timecode')[0].getElementsByTagName('twsec')[0].childNodes[0].data})
  
-        self.assertEqual(packetcount, 1, "Expected two packets, did not get that.")
+        self.assertEqual(packetcount, 1, "Expected one packet, did not get that.")
         for index,timecode in enumerate(timecodes):
             self.assertEqual(timecode_sent[index+3].twsec,int(timecode['twsec']))
-            self.assertAlmostEqual(timecode_sent[index+3].tfsec,float(timecode['tfsec'])) 
-        
+            self.assertEqual(timecode['twsec'], '{0:.0f}'.format(timecode_sent[index+3].twsec))
+            self.assertAlmostEqual(timecode_sent[index+3].tfsec,float(timecode['tfsec']))
+            self.assertEqual(timecode['tfsec'], '{0:.15f}'.format(timecode_sent[index+3].tfsec))
         
         #Read in Data from Test File as Short
         size = os.path.getsize(dataFileOut)
@@ -2428,9 +2431,9 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         comp.start()
         
         # Create an SRI with 2 keywords (1,2)
-        kws1 = {'TEST_KW1':1111,'TEST_KW2':'22','TEST_KW3':float(numpy.pi),'TEST_KW4':1.234}
-        kws1_props = props_from_dict(kws1)
         srate1 = 10.0e6
+        kws1 = {'TEST_KW1':1111,'TEST_KW2':'22','TEST_KW3':float(numpy.pi),'TEST_KW4':1.234,'XDELTA_KW':1.0/srate1}
+        kws1_props = props_from_dict(kws1)
         sri1 = BULKIO.StreamSRI(hversion=1,
                                   xstart=0,
                                   xdelta= 1.0/srate1, 
@@ -2467,23 +2470,24 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         # Push SRI
         
         #Push packet of data 
-        timecode_sent = []
+        s1_timecode_sent = []
+        s2_timecode_sent = []
         timestamp = bio.timestamp.now()
         port.pushPacket(data, timestamp, False, "test_streamID")   
-        timecode_sent.append(timestamp)
+        s1_timecode_sent.append(timestamp)
         timestamp = bio.timestamp.now()
         port.pushPacket(data, timestamp, False, "test_streamID")
-        timecode_sent.append(timestamp)
+        s1_timecode_sent.append(timestamp)
         port.pushSRI(sri2)
         timestamp = bio.timestamp.now()
         port.pushPacket(data, timestamp, False, "test_streamID2")    
-        timecode_sent.append(timestamp)
+        s2_timecode_sent.append(timestamp)
         timestamp = bio.timestamp.now()
         port.pushPacket(data, timestamp, True, "test_streamID2")   
-        timecode_sent.append(timestamp)
+        s2_timecode_sent.append(timestamp)
         timestamp = bio.timestamp.now()
         port.pushPacket(data, timestamp, True, "test_streamID")  
-        timecode_sent.append(timestamp)
+        s1_timecode_sent.append(timestamp)
         
         time.sleep(1)    
         
@@ -2496,14 +2500,14 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
             self.assertEqual(node.attributes['new'].value,"true", "SRI New Attribute has wrong value")
             self.assertEqual(node.getElementsByTagName('streamID')[0].childNodes[0].data,"test_streamID")
             self.assertAlmostEqual(float(node.getElementsByTagName('xdelta')[0].childNodes[0].data),(1.0/srate1))
-            self.assertEqual(str(node.getElementsByTagName('hversion')[0].childNodes[0].data),'1')
-            self.assertEqual(str(node.getElementsByTagName('xstart')[0].childNodes[0].data),'0')
-            self.assertEqual(str(node.getElementsByTagName('xunits')[0].childNodes[0].data),'1')
-            self.assertEqual(str(node.getElementsByTagName('subsize')[0].childNodes[0].data),'0')
-            self.assertEqual(str(node.getElementsByTagName('ydelta')[0].childNodes[0].data),'0')
-            self.assertEqual(str(node.getElementsByTagName('ystart')[0].childNodes[0].data),'0')
-            self.assertEqual(str(node.getElementsByTagName('yunits')[0].childNodes[0].data),'1')
-            self.assertEqual(str(node.getElementsByTagName('mode')[0].childNodes[0].data),'0')
+            self.assertEqual(int(node.getElementsByTagName('hversion')[0].childNodes[0].data),1)
+            self.assertEqual(float(node.getElementsByTagName('xstart')[0].childNodes[0].data),0.0)
+            self.assertEqual(int(node.getElementsByTagName('xunits')[0].childNodes[0].data),1)
+            self.assertEqual(int(node.getElementsByTagName('subsize')[0].childNodes[0].data),0)
+            self.assertEqual(float(node.getElementsByTagName('ydelta')[0].childNodes[0].data),0.0)
+            self.assertEqual(float(node.getElementsByTagName('ystart')[0].childNodes[0].data),0.0)
+            self.assertEqual(int(node.getElementsByTagName('yunits')[0].childNodes[0].data),1)
+            self.assertEqual(int(node.getElementsByTagName('mode')[0].childNodes[0].data),0)
             keywords = {}
             for keyword in node.getElementsByTagName('keyword'):
                 keywords[keyword.attributes['id'].value] = keyword.childNodes[0].data
@@ -2512,11 +2516,14 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
             self.assertTrue("TEST_KW2" in keywords)
             self.assertEqual(keywords["TEST_KW2"], kws1["TEST_KW2"])
             self.assertTrue("TEST_KW3" in keywords)
-            self.assertAlmostEqual(float(keywords["TEST_KW3"]), kws1["TEST_KW3"], 14)
-            self.assertEqual(keywords["TEST_KW3"], '{0:.14f}'.format(kws1["TEST_KW3"]))
+            self.assertAlmostEqual(float(keywords["TEST_KW3"]), kws1["TEST_KW3"], 15)
+            self.assertEqual(keywords["TEST_KW3"], '{0:.15f}'.format(kws1["TEST_KW3"]))
             self.assertTrue("TEST_KW4" in keywords)
-            self.assertAlmostEqual(float(keywords["TEST_KW4"]), kws1["TEST_KW4"], 14)
-            self.assertEqual(keywords["TEST_KW4"], '{0:.3f}'.format(kws1["TEST_KW4"]))
+            self.assertAlmostEqual(float(keywords["TEST_KW4"]), kws1["TEST_KW4"], 15)
+            self.assertEqual(keywords["TEST_KW4"], '{0:.15f}'.format(kws1["TEST_KW4"]))
+            self.assertTrue("XDELTA_KW" in keywords)
+            self.assertAlmostEqual(float(keywords["XDELTA_KW"]), kws1["XDELTA_KW"], 15)
+            self.assertEqual(keywords["XDELTA_KW"], '{0:.15f}'.format(kws1["XDELTA_KW"]))
         self.assertEqual(sricount, 1, "Received more than 1 sri in metadata")
         
         packetcount = 0
@@ -2525,8 +2532,15 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
             packetcount+=1
             self.assertEqual(node.getElementsByTagName('streamID')[0].childNodes[0].data,"test_streamID")
             self.assertEqual(node.getElementsByTagName('datalength')[0].childNodes[0].data,"2000")
+            timecodes.append({'tfsec':node.getElementsByTagName('timecode')[0].getElementsByTagName('tfsec')[0].childNodes[0].data,
+                              'twsec':node.getElementsByTagName('timecode')[0].getElementsByTagName('twsec')[0].childNodes[0].data})
 
         self.assertEqual(packetcount, 3, "Expected three packets, did not get that.")
+        for index,timecode in enumerate(timecodes):
+            self.assertEqual(int(timecode['twsec']), s1_timecode_sent[index].twsec)
+            self.assertEqual(timecode['twsec'], '{0:.0f}'.format(s1_timecode_sent[index].twsec))
+            self.assertAlmostEqual(float(timecode['tfsec']), s1_timecode_sent[index].tfsec)
+            self.assertEqual(timecode['tfsec'], '{0:.15f}'.format(s1_timecode_sent[index].tfsec))
 
         # Parse second metadata file and check it
         secondmetadataxml = minidom.parse(secondmetadatafile)
@@ -2537,14 +2551,14 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
             self.assertEqual(node.attributes['new'].value,"true", "SRI New Attribute has wrong value")
             self.assertEqual(node.getElementsByTagName('streamID')[0].childNodes[0].data,"test_streamID2")
             self.assertAlmostEqual(float(node.getElementsByTagName('xdelta')[0].childNodes[0].data),(1.0/srate2))
-            self.assertEqual(str(node.getElementsByTagName('hversion')[0].childNodes[0].data),'1')
-            self.assertEqual(str(node.getElementsByTagName('xstart')[0].childNodes[0].data),'0')
-            self.assertEqual(str(node.getElementsByTagName('xunits')[0].childNodes[0].data),'1')
-            self.assertEqual(str(node.getElementsByTagName('subsize')[0].childNodes[0].data),'0')
-            self.assertEqual(str(node.getElementsByTagName('ydelta')[0].childNodes[0].data),'0')
-            self.assertEqual(str(node.getElementsByTagName('ystart')[0].childNodes[0].data),'0')
-            self.assertEqual(str(node.getElementsByTagName('yunits')[0].childNodes[0].data),'1')
-            self.assertEqual(str(node.getElementsByTagName('mode')[0].childNodes[0].data),'0')
+            self.assertEqual(int(node.getElementsByTagName('hversion')[0].childNodes[0].data),1)
+            self.assertEqual(float(node.getElementsByTagName('xstart')[0].childNodes[0].data),0.0)
+            self.assertEqual(int(node.getElementsByTagName('xunits')[0].childNodes[0].data),1)
+            self.assertEqual(int(node.getElementsByTagName('subsize')[0].childNodes[0].data),0)
+            self.assertEqual(float(node.getElementsByTagName('ydelta')[0].childNodes[0].data),0.0)
+            self.assertEqual(float(node.getElementsByTagName('ystart')[0].childNodes[0].data),0.0)
+            self.assertEqual(int(node.getElementsByTagName('yunits')[0].childNodes[0].data),1)
+            self.assertEqual(int(node.getElementsByTagName('mode')[0].childNodes[0].data),0)
             keywords = {}
             for keyword in node.getElementsByTagName('keyword'):
                 keywords[keyword.attributes['id'].value] = keyword.childNodes[0].data
@@ -2560,8 +2574,15 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
             packetcount+=1
             self.assertEqual(node.getElementsByTagName('streamID')[0].childNodes[0].data,"test_streamID2")
             self.assertEqual(node.getElementsByTagName('datalength')[0].childNodes[0].data,"2000")
+            timecodes.append({'tfsec':node.getElementsByTagName('timecode')[0].getElementsByTagName('tfsec')[0].childNodes[0].data,
+                              'twsec':node.getElementsByTagName('timecode')[0].getElementsByTagName('twsec')[0].childNodes[0].data})
 
         self.assertEqual(packetcount, 2, "Expected two packets, did not get that.")
+        for index,timecode in enumerate(timecodes):
+            self.assertEqual(int(timecode['twsec']), s2_timecode_sent[index].twsec)
+            self.assertEqual(timecode['twsec'], '{0:.0f}'.format(s2_timecode_sent[index].twsec))
+            self.assertAlmostEqual(float(timecode['tfsec']), s2_timecode_sent[index].tfsec)
+            self.assertEqual(timecode['tfsec'], '{0:.15f}'.format(s2_timecode_sent[index].tfsec))
         
         #Read in Data from Test File as Short
         filedata = []
