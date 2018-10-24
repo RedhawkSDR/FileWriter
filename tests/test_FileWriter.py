@@ -2428,7 +2428,7 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         comp.start()
         
         # Create an SRI with 2 keywords (1,2)
-        kws1 = {'TEST_KW1':1111,'TEST_KW2':'22'}
+        kws1 = {'TEST_KW1':1111,'TEST_KW2':'22','TEST_KW3':float(numpy.pi),'TEST_KW4':1.234}
         kws1_props = props_from_dict(kws1)
         srate1 = 10.0e6
         sri1 = BULKIO.StreamSRI(hversion=1,
@@ -2511,6 +2511,12 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
             self.assertEqual(int(keywords["TEST_KW1"]), kws1["TEST_KW1"])
             self.assertTrue("TEST_KW2" in keywords)
             self.assertEqual(keywords["TEST_KW2"], kws1["TEST_KW2"])
+            self.assertTrue("TEST_KW3" in keywords)
+            self.assertAlmostEqual(float(keywords["TEST_KW3"]), kws1["TEST_KW3"], 14)
+            self.assertEqual(keywords["TEST_KW3"], '{0:.14f}'.format(kws1["TEST_KW3"]))
+            self.assertTrue("TEST_KW4" in keywords)
+            self.assertAlmostEqual(float(keywords["TEST_KW4"]), kws1["TEST_KW4"], 14)
+            self.assertEqual(keywords["TEST_KW4"], '{0:.3f}'.format(kws1["TEST_KW4"]))
         self.assertEqual(sricount, 1, "Received more than 1 sri in metadata")
         
         packetcount = 0
@@ -2577,10 +2583,10 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         for i in range(len(filedata2)):
             self.assertEqual(filedata2[i], expectedData2[i])
         
-        os.remove(dataFileName1) 
+        os.remove(dataFileName1)
         os.remove(dataFileName2)
-        os.remove(metadatafile) 
-        os.remove(secondmetadatafile) 
+        os.remove(metadatafile)
+        os.remove(secondmetadatafile)
         
 if __name__ == "__main__":
     ossie.utils.testing.main("../FileWriter.spd.xml") # By default tests all implementations

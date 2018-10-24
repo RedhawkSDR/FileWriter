@@ -869,6 +869,7 @@ std::string FileWriter_i::stream_to_basename(const std::string & stream_id, cons
 
 std::string FileWriter_i::sri_to_XMLstring(const BULKIO::StreamSRI& sri,const bool newsri) {
     std::ostringstream sri_string;
+    sri_string << std::setprecision (15);
     if (newsri) {
         sri_string << "<sri new=\"true\">";
     } else {
@@ -876,17 +877,38 @@ std::string FileWriter_i::sri_to_XMLstring(const BULKIO::StreamSRI& sri,const bo
     }
     sri_string << "<streamID>" << sri.streamID << "</streamID>";
     sri_string << "<hversion>" << sri.hversion << "</hversion>";
-    sri_string << "<xstart>" << sri.xstart << "</xstart>";
-    sri_string << "<xdelta>" <<std::setprecision (15) <<sri.xdelta << "</xdelta>";
-    sri_string << "<xunits>" << sri.xunits << "</xunits>";
-    sri_string << "<subsize>" << sri.subsize << "</subsize>";
-    sri_string << "<ystart>" << sri.ystart << "</ystart>";
-    sri_string << "<ydelta>" <<std::setprecision (15)<< sri.ydelta << "</ydelta>";
-    sri_string << "<yunits>" << sri.yunits << "</yunits>";
-    sri_string << "<mode>" << sri.mode << "</mode>";
+    sri_string << "<xstart>"   << sri.xstart   << "</xstart>";
+    sri_string << "<xdelta>"   << sri.xdelta   << "</xdelta>";
+    sri_string << "<xunits>"   << sri.xunits   << "</xunits>";
+    sri_string << "<subsize>"  << sri.subsize  << "</subsize>";
+    sri_string << "<ystart>"   << sri.ystart   << "</ystart>";
+    sri_string << "<ydelta>"   << sri.ydelta   << "</ydelta>";
+    sri_string << "<yunits>"   << sri.yunits   << "</yunits>";
+    sri_string << "<mode>"     << sri.mode     << "</mode>";
     for (unsigned int i = 0; i < sri.keywords.length(); i++) {
         unsigned int typecode_name = sri.keywords[i].value.type()->kind();
-        sri_string << "<keyword id=\"" << sri.keywords[i].id << "\" type=\"" <<typecode_name<<"\">"<<ossie::any_to_string(sri.keywords[i].value)<<"</keyword>";
+        sri_string << "<keyword id=\"" << sri.keywords[i].id << "\" type=\"" << typecode_name << "\">";
+
+        CORBA::Float tmpFloat;
+        CORBA::Double tmpDouble;
+        CORBA::LongDouble tmpLongDouble;
+        switch (typecode_name) {
+        case CORBA::tk_float:
+            sri.keywords[i].value >>= tmpFloat;
+            sri_string << tmpFloat;
+            break;
+        case CORBA::tk_double:
+            sri.keywords[i].value >>= tmpDouble;
+            sri_string << tmpDouble;
+            break;
+        case CORBA::tk_longdouble:
+            sri.keywords[i].value >>= tmpLongDouble;
+            sri_string << tmpLongDouble;
+            break;
+        default:
+            sri_string << ossie::any_to_string(sri.keywords[i].value);
+        }
+        sri_string << "</keyword>";
     }
     sri_string << "</sri>";
 
