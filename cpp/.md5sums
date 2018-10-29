@@ -1,8 +1,8 @@
 103de2d474a820d16a1ab948e3211bfa  main.cpp
 8bfcd22353c3a57fee561ad86ee2a56b  reconf
-01013c24f64eaea659effaa71b6e5ab3  configure.ac
-8fb15fb38e360dd8219d0a8cd9d50388  FileWriter_base.cpp
+54ba16b7f828ed52e6b0705c596396a6  configure.ac
+9e068fda58b656f2b614ee419a5e1eba  FileWriter_base.cpp
 785e752355316d1c2789eddb31e16606  struct_props.h
-6f9f941e4f5e5920d30e0ffcb2568204  FileWriter_base.h
+1e6318b04e6579c2fe339c7b1840d7ea  FileWriter_base.h
 2b2faa5cfc83438427491f4be5d6ee59  build.sh
 64b1761b3b79ffd9452f2147b21f1493  Makefile.am

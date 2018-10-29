@@ -47,7 +47,7 @@ sca:// 	SCA Filesystem (path relative to SDRROOT/dom)</description>
     <action type="external"/>
   </simple>
   <simple id="swap_bytes" mode="readwrite" name="swap_bytes" type="boolean">
-    <description>When true, the endianness of the data will be switched from the local machine's representation.  For example, on an x86 machine, the native endianness is little, so enabling this would cause big-endian data to be written.  However on an ARM machine, the native endianness can be either little or big, and the interpretation of this property could change.</description>
+    <description>When true, the endianness of the incoming BulkIO data will be switched from the representation indicated by the input_bulkio_byte_order property by swapping the byte order of the data before the data is written to file. This will affect the data format indicator string included in the file name when using the %DT% string replacement. For example, if input_bulkio_byte_order indicates Little Endian (or Host Byte Order on Little Endian hosts), enabling the swap_bytes property will cause Big Endian data to be written to file and the data format indicator string in the file name will indicate Big Endian as well.</description>
     <value>false</value>
     <kind kindtype="property"/>
     <action type="external"/>
@@ -197,4 +197,24 @@ Note: Changing this property will take affect on the next new file that is initi
     </simple>
     <configurationkind kindtype="property"/>
   </struct>
+  <simple id="input_bulkio_byte_order" mode="readwrite" name="input_bulkio_byte_order" type="string">
+    <description>Specifies the byte order (endianness) of the incoming BulkIO data. Host byte order will treat the incoming data as the endianness of the host system. This property, along with the swap_bytes property, will determine the data format indicator string included in the file name when %DT% string replacement is used.</description>
+    <value>host_order</value>
+    <enumerations>
+      <enumeration label="Host Byte Order" value="host_order"/>
+      <enumeration label="Little Endian" value="little_endian"/>
+      <enumeration label="Big Endian" value="big_endian"/>
+    </enumerations>
+    <kind kindtype="property"/>
+    <action type="external"/>
+  </simple>
+  <simple id="host_byte_order" mode="readonly" name="host_byte_order" type="string">
+    <description>The native byte order (endianness) of the host system.</description>
+    <enumerations>
+      <enumeration label="Little Endian" value="little_endian"/>
+      <enumeration label="Big Endian" value="big_endian"/>
+    </enumerations>
+    <kind kindtype="property"/>
+    <action type="external"/>
+  </simple>
 </properties>
