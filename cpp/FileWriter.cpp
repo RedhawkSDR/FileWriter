@@ -57,6 +57,19 @@ void FileWriter_i::constructor() {
         current_writer_type = RAW;
     maxSize = sizeString_to_longBytes(advanced_properties.max_file_size);
     change_uri();
+
+    // Determine host byte order
+    switch(BYTE_ORDER) {
+    case LITTLE_ENDIAN:
+    	host_byte_order = "little_endian";
+    	break;
+    case BIG_ENDIAN:
+    	host_byte_order = "big_endian";
+    	break;
+    default:
+    	host_byte_order = "little_endian";
+    	LOG_ERROR(FileWriter_i,"Could not determine host byte order ["<<BYTE_ORDER<<"], defaulting to Little Endian");
+    };
 }
 
 void FileWriter_i::start() throw (CF::Resource::StartError, CORBA::SystemException) {

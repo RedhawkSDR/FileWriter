@@ -18,8 +18,7 @@
 #
 
 import ossie.utils.testing
-import os
-import time
+import sys, os, time
 from omniORB import any
 from ossie.utils import sb, bulkio
 from ossie.cf import CF
@@ -2608,6 +2607,26 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         os.remove(dataFileName2)
         os.remove(metadatafile)
         os.remove(secondmetadatafile)
-        
+
+    def testHostByteOrderProp(self):
+        #######################################################################
+        # Test the host_byte_order property indicates correct host endianness
+        print "\n**TESTING HOST BYTE ORDER PROP VALUE"
+
+        # Create Component
+        comp = sb.launch('../FileWriter.spd.xml')
+
+        # Check the host_byte_order property
+        try:
+            self.assertEqual(sys.byteorder + '_endian', comp.host_byte_order)
+        except self.failureException as e:
+            comp.releaseObject()
+            raise e
+
+        # Release the components and remove the generated files
+        comp.releaseObject()
+
+        print "........ PASSED\n"
+
 if __name__ == "__main__":
     ossie.utils.testing.main("../FileWriter.spd.xml") # By default tests all implementations
