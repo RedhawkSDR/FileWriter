@@ -248,33 +248,33 @@ private:
     }
 
     template <typename IN_PORT_TYPE> std::string data_format_string(){
+
+        // Add 'r' to mean "reversed" or Little Endian when:
+        //   - atom size is greater than 1 Byte (8 bits)
+        //   - Byte order is Little Endian and we ARE NOT byte swapping
+        //   - Byte order is Big Endian and we ARE byte swapping
+        std::string endian = "";
+        if((BULKIO_BYTE_ORDER==LITTLE_ENDIAN) ^ swap_bytes)
+            endian = "r";
+
         std::string format = "";
         if (typeid(IN_PORT_TYPE) == typeid(bulkio::InCharPort) || typeid(IN_PORT_TYPE) == typeid(bulkio::InXMLPort)) {
             format = "8t";
         } else if (typeid(IN_PORT_TYPE) == typeid(bulkio::InOctetPort)) {
             format = "8o";
         } else if (typeid(IN_PORT_TYPE) == typeid(bulkio::InShortPort)) {
-            format = "16t";
+            format = "16t" + endian;
         } else if (typeid(IN_PORT_TYPE) == typeid(bulkio::InUShortPort)) {
-            format = "16o";
+            format = "16o" + endian;
         } else if (typeid(IN_PORT_TYPE) == typeid(bulkio::InFloatPort)) {
-            format = "32f";
+            format = "32f" + endian;
         } else if (typeid(IN_PORT_TYPE) == typeid(bulkio::InDoublePort)) {
-            format = "64f";
+            format = "64f" + endian;
         } else {
             LOG_ERROR(FileWriter_i,"Could not determine data format string; Defaulting to 8o for unsigned bytes.");
             format = "8o";
         }
 
-        // Add 'r' to mean "reversed" or Little Endian when:
-        //   - atom size is greater than 1 Byte (8 bits)
-        //   - Byte order is Little Endian and we ARE NOT byte swapping
-        //   - Byte order is Big Endian and we ARE byte swapping
-        //if(format[0] != '8' && ((BULKIO_BYTE_ORDER==LITTLE_ENDIAN) ^ swap_bytes) )
-        if(sizeof(typename IN_PORT_TYPE::NativeType) > sizeof(char) && ((BULKIO_BYTE_ORDER==LITTLE_ENDIAN) ^ swap_bytes) )
-            format += "r";
-
-        // TODO - make below log message DEBUG
         LOG_DEBUG(FileWriter_i,"data_format_string="<<format<<"  BYTE_ORDER="<<BULKIO_BYTE_ORDER<<"  swap_bytes="<<swap_bytes);
         return format;
     }
