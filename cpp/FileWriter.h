@@ -179,6 +179,7 @@ private:
     void advanced_propertiesChanged(const advanced_properties_struct &oldValue, const advanced_properties_struct &newValue);
     void recording_timerChanged(const std::vector<timer_struct_struct> &oldValue, const std::vector<timer_struct_struct> &newValue);
     void construct_recording_timer(const std::vector<timer_struct_struct> &timers);
+    void input_bulkio_byte_orderChanged(std::string oldValue, std::string newValue);
     
     long maxSize;
     std::string prop_dirname;
@@ -190,8 +191,8 @@ private:
     std::string sri_to_XMLstring(const BULKIO::StreamSRI& sri,const bool newsri);
     std::string packet_to_XMLstring(const int packetSize, const BULKIO::StreamSRI& sri, const BULKIO::PrecisionUTCTime& timecode, const bool& eos,const size_t packetPosition,const size_t elementSize);
 
-    std::string stream_to_basename(const std::string & stream_id,const BULKIO::StreamSRI& sri, const BULKIO::PrecisionUTCTime &_T, const std::string & extension, const std::string & dt);
-    template <class IN_PORT_TYPE> bool singleService(IN_PORT_TYPE *dataIn, const std::string & dt);
+    template <typename IN_PORT_TYPE> std::string stream_to_basename(const std::string & stream_id,const BULKIO::StreamSRI& sri, const BULKIO::PrecisionUTCTime &_T, const std::string & extension);
+    template <class IN_PORT_TYPE> bool singleService(IN_PORT_TYPE *dataIn);
     size_t sizeString_to_longBytes(std::string size);
     bool close_file(const std::string& filename, const BULKIO::PrecisionUTCTime & timestamp, std::string streamId = "");
 
@@ -206,6 +207,8 @@ private:
 
     std::map<std::string, std::string> stream_to_file_mapping;
     std::map<std::string, file_struct> file_to_struct_mapping;
+
+    long BULKIO_BYTE_ORDER;
 
     bool remove_file_from_filesystem(const std::string& filename){
         if(!filename.empty()){
@@ -242,6 +245,38 @@ private:
     }
     inline double J1970_to_J1950(const double& _j1970){
         return _j1970 - double(631152000);
+    }
+
+    template <typename IN_PORT_TYPE> std::string data_format_string(){
+        std::string format = "";
+        if (typeid(IN_PORT_TYPE) == typeid(bulkio::InCharPort) || typeid(IN_PORT_TYPE) == typeid(bulkio::InXMLPort)) {
+            format = "8t";
+        } else if (typeid(IN_PORT_TYPE) == typeid(bulkio::InOctetPort)) {
+            format = "8o";
+        } else if (typeid(IN_PORT_TYPE) == typeid(bulkio::InShortPort)) {
+            format = "16t";
+        } else if (typeid(IN_PORT_TYPE) == typeid(bulkio::InUShortPort)) {
+            format = "16o";
+        } else if (typeid(IN_PORT_TYPE) == typeid(bulkio::InFloatPort)) {
+            format = "32f";
+        } else if (typeid(IN_PORT_TYPE) == typeid(bulkio::InDoublePort)) {
+            format = "64f";
+        } else {
+            LOG_ERROR(FileWriter_i,"Could not determine data format string; Defaulting to 8o for unsigned bytes.");
+            format = "8o";
+        }
+
+        // Add 'r' to mean "reversed" or Little Endian when:
+        //   - atom size is greater than 1 Byte (8 bits)
+        //   - Byte order is Little Endian and we ARE NOT byte swapping
+        //   - Byte order is Big Endian and we ARE byte swapping
+        //if(format[0] != '8' && ((BULKIO_BYTE_ORDER==LITTLE_ENDIAN) ^ swap_bytes) )
+        if(sizeof(typename IN_PORT_TYPE::NativeType) > sizeof(char) && ((BULKIO_BYTE_ORDER==LITTLE_ENDIAN) ^ swap_bytes) )
+            format += "r";
+
+        // TODO - make below log message DEBUG
+        LOG_DEBUG(FileWriter_i,"data_format_string="<<format<<"  BYTE_ORDER="<<BULKIO_BYTE_ORDER<<"  swap_bytes="<<swap_bytes);
+        return format;
     }
 
     template <typename DATA_TYPE> std::string midas_type(bool isReal){

@@ -39,6 +39,7 @@ FileWriter_base(uuid, label) {
     addPropertyListener(file_format, this, &FileWriter_i::file_formatChanged);
     addPropertyListener(advanced_properties, this, &FileWriter_i::advanced_propertiesChanged);
     addPropertyListener(recording_timer, this, &FileWriter_i::recording_timerChanged);
+    addPropertyListener(input_bulkio_byte_order, this, &FileWriter_i::input_bulkio_byte_orderChanged);
 }
 
 FileWriter_i::~FileWriter_i() {
@@ -61,15 +62,24 @@ void FileWriter_i::constructor() {
     // Determine host byte order
     switch(BYTE_ORDER) {
     case LITTLE_ENDIAN:
-    	host_byte_order = "little_endian";
-    	break;
+        host_byte_order = "little_endian";
+        break;
     case BIG_ENDIAN:
-    	host_byte_order = "big_endian";
-    	break;
+        host_byte_order = "big_endian";
+        break;
     default:
-    	host_byte_order = "little_endian";
-    	LOG_ERROR(FileWriter_i,"Could not determine host byte order ["<<BYTE_ORDER<<"], defaulting to Little Endian");
-    };
+        host_byte_order = "little_endian";
+        LOG_ERROR(FileWriter_i,"Could not determine host byte order ["<<BYTE_ORDER<<"], defaulting to Little Endian");
+    }
+
+    // Determine BulkIO input byte order
+    if (input_bulkio_byte_order == "little_endian") {
+        BULKIO_BYTE_ORDER = LITTLE_ENDIAN;
+    } else if (input_bulkio_byte_order == "big_endian") {
+        BULKIO_BYTE_ORDER = BIG_ENDIAN;
+    } else { // host_order
+        BULKIO_BYTE_ORDER = BYTE_ORDER;
+    }
 }
 
 void FileWriter_i::start() throw (CF::Resource::StartError, CORBA::SystemException) {
@@ -215,6 +225,25 @@ void FileWriter_i::construct_recording_timer(const std::vector<timer_struct_stru
     timer_set_iter = timer_set.begin();
 }
 
+void FileWriter_i::input_bulkio_byte_orderChanged(std::string oldValue, std::string newValue){
+    exclusive_lock lock(service_thread_lock);
+    if (oldValue != newValue) {
+        if (newValue == "little_endian") {
+            LOG_DEBUG(FileWriter_i,"input_bulkio_byte_order changed from "<<oldValue<<" to "<<newValue);
+            BULKIO_BYTE_ORDER = LITTLE_ENDIAN;
+        } else if (newValue ==  "big_endian") {
+            LOG_DEBUG(FileWriter_i,"input_bulkio_byte_order changed from "<<oldValue<<" to "<<newValue);
+            BULKIO_BYTE_ORDER = BIG_ENDIAN;
+        } else if (newValue == "host_order") {
+            LOG_DEBUG(FileWriter_i,"input_bulkio_byte_order changed from "<<oldValue<<" to "<<newValue);
+            BULKIO_BYTE_ORDER = BYTE_ORDER;
+        } else {
+            LOG_ERROR(FileWriter_i,"Configured with invalid input_bulkio_byte_order value: "<<newValue<<"; Reverting back to previous value: "<<oldValue);
+            input_bulkio_byte_order = oldValue;
+        }
+    }
+}
+
 /***********************************************************************************************
 
     Basic functionality:
@@ -354,13 +383,13 @@ void FileWriter_i::construct_recording_timer(const std::vector<timer_struct_stru
 int FileWriter_i::serviceFunction() {
     exclusive_lock lock(service_thread_lock);
     // Service each port individually. Does not account for multiple ports connected at once
-    bool retService = singleService(dataChar_in, "8t");
-    retService = retService || singleService(dataOctet_in, "8o");
-    retService = retService || singleService(dataShort_in, "16tr");
-    retService = retService || singleService(dataUshort_in, "16or");
-    retService = retService || singleService(dataFloat_in, "32fr");
-    retService = retService || singleService(dataDouble_in, "64fr");
-    retService = retService || singleService(dataXML_in, "8t");
+    bool retService =          singleService(dataChar_in);
+    retService = retService || singleService(dataOctet_in);
+    retService = retService || singleService(dataShort_in);
+    retService = retService || singleService(dataUshort_in);
+    retService = retService || singleService(dataFloat_in);
+    retService = retService || singleService(dataDouble_in);
+    retService = retService || singleService(dataXML_in);
 
     if (retService) // If retService is true, then at least 1 packet was received and processed
         return NORMAL;
@@ -371,7 +400,7 @@ int FileWriter_i::serviceFunction() {
 /**
  * A templated service function that is generic between data types.
  */
-template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * dataIn, const std::string & dt) {
+template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * dataIn) {
     typename IN_PORT_TYPE::dataTransfer *packet = dataIn->getPacket(0);
     if (packet == NULL)
         return false;
@@ -470,15 +499,15 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
 
     // BYTE SWAP
     if (swap_bytes) {
-        if (dt.find("16") != std::string::npos) {
+        if (sizeof(packet->dataBuffer[0]) == sizeof(uint16_t)) {
             LOG_DEBUG(FileWriter_i, "SWAP_BYTES - swapping 16");
             std::vector<uint16_t> *svp = (std::vector<uint16_t> *) & packet->dataBuffer;
             std::transform(svp->begin(), svp->end(), svp->begin(), Byte_Swap16<uint16_t>);
-        } else if (dt.find("32") != std::string::npos) {
+        } else if (sizeof(packet->dataBuffer[0]) == sizeof(uint32_t)) {
             LOG_DEBUG(FileWriter_i, "SWAP_BYTES - swapping 32");
             std::vector<uint32_t> *svp = (std::vector<uint32_t> *) & packet->dataBuffer;
             std::transform(svp->begin(), svp->end(), svp->begin(), Byte_Swap32<uint32_t>);
-        } else if (dt.find("64") != std::string::npos) {
+        } else if (sizeof(packet->dataBuffer[0]) == sizeof(uint64_t)) {
             LOG_DEBUG(FileWriter_i, "SWAP_BYTES - swapping 64");
             std::vector<uint64_t> *svp = (std::vector<uint64_t> *) & packet->dataBuffer;
             std::transform(svp->begin(), svp->end(), svp->begin(), Byte_Swap64<uint64_t>);
@@ -490,7 +519,7 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
             // Is File New
             bool new_file = destination_filename.empty();
             if (new_file) {
-                std::string basename = stream_to_basename(stream_id, packet->SRI, packet->T, file_format, dt);
+                std::string basename = stream_to_basename<IN_PORT_TYPE>(stream_id, packet->SRI, packet->T, file_format);
                 destination_filename = prop_dirname + basename;
                 bool append = false;
                 // Unless the file is appending, do something if the file already exists
@@ -774,7 +803,8 @@ bool FileWriter_i::close_file(const std::string& filename, const BULKIO::Precisi
     return false;
 }
 
-std::string FileWriter_i::stream_to_basename(const std::string & stream_id, const BULKIO::StreamSRI& sri, const BULKIO::PrecisionUTCTime &_T, const std::string & extension, const std::string & dt) {
+template <class IN_PORT_TYPE>
+std::string FileWriter_i::stream_to_basename(const std::string & stream_id, const BULKIO::StreamSRI& sri, const BULKIO::PrecisionUTCTime &_T, const std::string & extension) {
 
     // Create Timestamp String
     BULKIO::PrecisionUTCTime tstamp = _T;
@@ -825,7 +855,7 @@ std::string FileWriter_i::stream_to_basename(const std::string & stream_id, cons
     bn = replace_string(bn, "%EXTENSION%", ext);
     bn = replace_string(bn, "%MODE%", mode);
     bn = replace_string(bn, "%SR%", std::string(sr));
-    bn = replace_string(bn, "%DT%", std::string(dt));
+    bn = replace_string(bn, "%DT%", data_format_string<IN_PORT_TYPE>());
 
     std::string cf_hz_str = "Hz";
     std::string colrf_hz_str = "";

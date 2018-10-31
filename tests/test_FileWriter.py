@@ -2623,5 +2623,650 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
 
         print "........ PASSED\n"
 
+    def testCharPortDataFormatStringHostNoswap(self):
+        #######################################################################
+        # Test Data Format String for Char Port, Host byte order input, no byte swapping
+        self.charDataFormatStringTest(input_endian='host_order', swap_bytes=False)
+
+    def testCharPortDataFormatStringHostSwap(self):
+        #######################################################################
+        # Test Data Format String for Char Port, Host byte order input, byte swapping
+        self.charDataFormatStringTest(input_endian='host_order', swap_bytes=True)
+
+    def testCharPortDataFormatStringLittleNoswap(self):
+        #######################################################################
+        # Test Data Format String for Char Port, little endian input, no byte swapping
+        self.charDataFormatStringTest(input_endian='little_endian', swap_bytes=False)
+
+    def testCharPortDataFormatStringLittleSwap(self):
+        #######################################################################
+        # Test Data Format String for Char Port, little endian input, byte swapping
+        self.charDataFormatStringTest(input_endian='little_endian', swap_bytes=True)
+
+    def testCharPortDataFormatStringBigNoswap(self):
+        #######################################################################
+        # Test Data Format String for Char Port, big endian input, no byte swapping
+        self.charDataFormatStringTest(input_endian='big_endian', swap_bytes=False)
+
+    def testCharPortDataFormatStringBigSwap(self):
+        #######################################################################
+        # Test Data Format String for Char Port, big endian input, byte swapping
+        self.charDataFormatStringTest(input_endian='big_endian', swap_bytes=True)
+
+    def charDataFormatStringTest(self, input_endian, swap_bytes):
+        #######################################################################
+        # Test Data Format String for Char Port
+        print "\n**TESTING DATA FORMAT STRING FOR CHAR+INPUT=%s+SWAP=%s"%(input_endian,swap_bytes)
+        
+        
+        data_format_string = '8t'
+
+        #Define test files
+        dataFileIn = './data.in'
+        dataFileOut = './data.%DT%.out'
+        expectedDataFileOut = './data.%s.out'%(data_format_string)
+
+        #Create Test Data File if it doesn't exist
+        if not os.path.isfile(dataFileIn):
+            with open(dataFileIn, 'wb') as dataIn:
+                dataIn.write(os.urandom(1024))
+
+        #Read in Data from Test File
+        size = os.path.getsize(dataFileIn)
+        with open (dataFileIn, 'rb') as dataIn:
+            data = list(struct.unpack('b'*size, dataIn.read(size)))
+
+        #Create Components and Connections
+        comp = sb.launch('../FileWriter.spd.xml')
+        comp.destination_uri = dataFileOut
+        comp.advanced_properties.existing_file = "TRUNCATE"
+        comp.input_bulkio_byte_order = input_endian
+        comp.swap_bytes = swap_bytes
+
+        source = sb.DataSource(bytesPerPush=64, dataFormat='8t')
+        source.connect(comp,providesPortName='dataChar_in')
+
+        #Start Components & Push Data
+        sb.start()
+        source.push(data)
+        time.sleep(2)
+        sb.stop()
+
+        #Check that the input and output files are the same
+        try:
+            self.assertTrue(os.path.isfile(expectedDataFileOut))
+        except self.failureException as e:
+            comp.releaseObject()
+            source.releaseObject()
+            os.remove(dataFileIn)
+            if os.path.exists(dataFileOut):
+                os.remove(dataFileOut)
+            if os.path.exists(expectedDataFileOut):
+              os.remove(expectedDataFileOut)
+            raise e
+
+        #Release the components and remove the generated files
+        comp.releaseObject()
+        source.releaseObject()
+        os.remove(dataFileIn)
+        os.remove(expectedDataFileOut)
+
+        print "........ PASSED\n"
+        return
+
+    def testOctetPortDataFormatStringHostNoswap(self):
+        #######################################################################
+        # Test Data Format String for Octet Port, Host byte order input, no byte swapping
+        self.octetDataFormatStringTest(input_endian='host_order', swap_bytes=False)
+
+    def testOctetPortDataFormatStringHostSwap(self):
+        #######################################################################
+        # Test Data Format String for Octet Port, Host byte order input, byte swapping
+        self.octetDataFormatStringTest(input_endian='host_order', swap_bytes=True)
+
+    def testOctetPortDataFormatStringLittleNoswap(self):
+        #######################################################################
+        # Test Data Format String for Octet Port, little endian input, no byte swapping
+        self.octetDataFormatStringTest(input_endian='little_endian', swap_bytes=False)
+
+    def testOctetPortDataFormatStringLittleSwap(self):
+        #######################################################################
+        # Test Data Format String for Octet Port, little endian input, byte swapping
+        self.octetDataFormatStringTest(input_endian='little_endian', swap_bytes=True)
+
+    def testOctetPortDataFormatStringBigNoswap(self):
+        #######################################################################
+        # Test Data Format String for Octet Port, big endian input, no byte swapping
+        self.octetDataFormatStringTest(input_endian='big_endian', swap_bytes=False)
+
+    def testOctetPortDataFormatStringBigSwap(self):
+        #######################################################################
+        # Test Data Format String for Octet Port, big endian input, byte swapping
+        self.octetDataFormatStringTest(input_endian='big_endian', swap_bytes=True)
+
+    def octetDataFormatStringTest(self, input_endian, swap_bytes):
+        #######################################################################
+        # Test Data Format String for Octet Port
+        print "\n**TESTING DATA FORMAT STRING FOR OCTET+INPUT=%s+SWAP=%s"%(input_endian,swap_bytes)
+        
+        
+        data_format_string = '8o'
+
+        #Define test files
+        dataFileIn = './data.in'
+        dataFileOut = './data.%DT%.out'
+        expectedDataFileOut = './data.%s.out'%(data_format_string)
+
+        #Create Test Data File if it doesn't exist
+        if not os.path.isfile(dataFileIn):
+            with open(dataFileIn, 'wb') as dataIn:
+                dataIn.write(os.urandom(1024))
+
+        #Read in Data from Test File
+        size = os.path.getsize(dataFileIn)
+        with open (dataFileIn, 'rb') as dataIn:
+            data = list(struct.unpack('B'*size, dataIn.read(size)))
+
+        #Create Components and Connections
+        comp = sb.launch('../FileWriter.spd.xml')
+        comp.destination_uri = dataFileOut
+        comp.advanced_properties.existing_file = "TRUNCATE"
+        comp.input_bulkio_byte_order = input_endian
+        comp.swap_bytes = swap_bytes
+
+        source = sb.DataSource(bytesPerPush=64, dataFormat='8u')
+        source.connect(comp,providesPortName='dataOctet_in')
+
+        #Start Components & Push Data
+        sb.start()
+        source.push(data)
+        time.sleep(2)
+        sb.stop()
+
+        #Check that the input and output files are the same
+        try:
+            self.assertTrue(os.path.isfile(expectedDataFileOut))
+        except self.failureException as e:
+            comp.releaseObject()
+            source.releaseObject()
+            os.remove(dataFileIn)
+            if os.path.exists(dataFileOut):
+                os.remove(dataFileOut)
+            if os.path.exists(expectedDataFileOut):
+              os.remove(expectedDataFileOut)
+            raise e
+
+        #Release the components and remove the generated files
+        comp.releaseObject()
+        source.releaseObject()
+        os.remove(dataFileIn)
+        os.remove(expectedDataFileOut)
+
+        print "........ PASSED\n"
+        return
+
+    def testShortPortDataFormatStringHostNoswap(self):
+        #######################################################################
+        # Test Data Format String for Short Port, Host byte order input, no byte swapping
+        self.shortDataFormatStringTest(input_endian='host_order', swap_bytes=False)
+
+    def testShortPortDataFormatStringHostSwap(self):
+        #######################################################################
+        # Test Data Format String for Short Port, Host byte order input, byte swapping
+        self.shortDataFormatStringTest(input_endian='host_order', swap_bytes=True)
+
+    def testShortPortDataFormatStringLittleNoswap(self):
+        #######################################################################
+        # Test Data Format String for Short Port, little endian input, no byte swapping
+        self.shortDataFormatStringTest(input_endian='little_endian', swap_bytes=False)
+
+    def testShortPortDataFormatStringLittleSwap(self):
+        #######################################################################
+        # Test Data Format String for Short Port, little endian input, byte swapping
+        self.shortDataFormatStringTest(input_endian='little_endian', swap_bytes=True)
+
+    def testShortPortDataFormatStringBigNoswap(self):
+        #######################################################################
+        # Test Data Format String for Short Port, big endian input, no byte swapping
+        self.shortDataFormatStringTest(input_endian='big_endian', swap_bytes=False)
+
+    def testShortPortDataFormatStringBigSwap(self):
+        #######################################################################
+        # Test Data Format String for Short Port, big endian input, byte swapping
+        self.shortDataFormatStringTest(input_endian='big_endian', swap_bytes=True)
+
+    def shortDataFormatStringTest(self, input_endian, swap_bytes):
+        #######################################################################
+        # Test Data Format String for Short Port
+        print "\n**TESTING DATA FORMAT STRING FOR SHORT+INPUT=%s+SWAP=%s"%(input_endian,swap_bytes)
+
+        # If input byte order is Little (or Host and Host is Little), and not byte swap --> Little Endian output
+        # Otherwise, Big Endian output
+        if ((input_endian == 'little_endian' or (input_endian == 'host_order' and sys.byteorder == 'little')) != swap_bytes):
+            data_format_string = '16tr'
+        else:
+            data_format_string = '16t'
+
+        #Define test files
+        dataFileIn = './data.in'
+        dataFileOut = './data.%DT%.out'
+        expectedDataFileOut = './data.%s.out'%(data_format_string)
+
+        #Create Test Data File if it doesn't exist
+        if not os.path.isfile(dataFileIn):
+            with open(dataFileIn, 'wb') as dataIn:
+                dataIn.write(os.urandom(1024))
+
+        #Read in Data from Test File
+        size = os.path.getsize(dataFileIn)
+        with open (dataFileIn, 'rb') as dataIn:
+            data = list(struct.unpack('h' * (size/2), dataIn.read(size)))
+
+        #Create Components and Connections
+        comp = sb.launch('../FileWriter.spd.xml')
+        comp.destination_uri = dataFileOut
+        comp.advanced_properties.existing_file = "TRUNCATE"
+        comp.input_bulkio_byte_order = input_endian
+        comp.swap_bytes = swap_bytes
+
+        source = sb.DataSource(bytesPerPush=64, dataFormat='16t')
+        source.connect(comp,providesPortName='dataShort_in')
+
+        #Start Components & Push Data
+        sb.start()
+        source.push(data)
+        time.sleep(2)
+        sb.stop()
+
+        #Check that the input and output files are the same
+        try:
+            self.assertTrue(os.path.isfile(expectedDataFileOut))
+        except self.failureException as e:
+            comp.releaseObject()
+            source.releaseObject()
+            os.remove(dataFileIn)
+            if os.path.exists(dataFileOut):
+                os.remove(dataFileOut)
+            if os.path.exists(expectedDataFileOut):
+              os.remove(expectedDataFileOut)
+            raise e
+
+        #Release the components and remove the generated files
+        comp.releaseObject()
+        source.releaseObject()
+        os.remove(dataFileIn)
+        os.remove(expectedDataFileOut)
+
+        print "........ PASSED\n"
+        return
+
+    def testUShortPortDataFormatStringHostNoswap(self):
+        #######################################################################
+        # Test Data Format String for UShort Port, Host byte order input, no byte swapping
+        self.ushortDataFormatStringTest(input_endian='host_order', swap_bytes=False)
+
+    def testUShortPortDataFormatStringHostSwap(self):
+        #######################################################################
+        # Test Data Format String for UShort Port, Host byte order input, byte swapping
+        self.ushortDataFormatStringTest(input_endian='host_order', swap_bytes=True)
+
+    def testUShortPortDataFormatStringLittleNoswap(self):
+        #######################################################################
+        # Test Data Format String for UShort Port, little endian input, no byte swapping
+        self.ushortDataFormatStringTest(input_endian='little_endian', swap_bytes=False)
+
+    def testUShortPortDataFormatStringLittleSwap(self):
+        #######################################################################
+        # Test Data Format String for UShort Port, little endian input, byte swapping
+        self.ushortDataFormatStringTest(input_endian='little_endian', swap_bytes=True)
+
+    def testUShortPortDataFormatStringBigNoswap(self):
+        #######################################################################
+        # Test Data Format String for UShort Port, big endian input, no byte swapping
+        self.ushortDataFormatStringTest(input_endian='big_endian', swap_bytes=False)
+
+    def testUShortPortDataFormatStringBigSwap(self):
+        #######################################################################
+        # Test Data Format String for UShort Port, big endian input, byte swapping
+        self.ushortDataFormatStringTest(input_endian='big_endian', swap_bytes=True)
+
+    def ushortDataFormatStringTest(self, input_endian, swap_bytes):
+        #######################################################################
+        # Test Data Format String for UShort Port
+        print "\n**TESTING DATA FORMAT STRING FOR USHORT+INPUT=%s+SWAP=%s"%(input_endian,swap_bytes)
+
+        # If input byte order is Little (or Host and Host is Little), and not byte swap --> Little Endian output
+        # Otherwise, Big Endian output
+        if ((input_endian == 'little_endian' or (input_endian == 'host_order' and sys.byteorder == 'little')) != swap_bytes):
+            data_format_string = '16or'
+        else:
+            data_format_string = '16o'
+
+        #Define test files
+        dataFileIn = './data.in'
+        dataFileOut = './data.%DT%.out'
+        expectedDataFileOut = './data.%s.out'%(data_format_string)
+
+        #Create Test Data File if it doesn't exist
+        if not os.path.isfile(dataFileIn):
+            with open(dataFileIn, 'wb') as dataIn:
+                dataIn.write(os.urandom(1024))
+
+        #Read in Data from Test File
+        size = os.path.getsize(dataFileIn)
+        with open (dataFileIn, 'rb') as dataIn:
+            data = list(struct.unpack('H' * (size/2), dataIn.read(size)))
+
+        #Create Components and Connections
+        comp = sb.launch('../FileWriter.spd.xml')
+        comp.destination_uri = dataFileOut
+        comp.advanced_properties.existing_file = "TRUNCATE"
+        comp.input_bulkio_byte_order = input_endian
+        comp.swap_bytes = swap_bytes
+
+        source = sb.DataSource(bytesPerPush=64, dataFormat='16u')
+        source.connect(comp,providesPortName='dataUshort_in')
+
+        #Start Components & Push Data
+        sb.start()
+        source.push(data)
+        time.sleep(2)
+        sb.stop()
+
+        #Check that the input and output files are the same
+        try:
+            self.assertTrue(os.path.isfile(expectedDataFileOut))
+        except self.failureException as e:
+            comp.releaseObject()
+            source.releaseObject()
+            os.remove(dataFileIn)
+            if os.path.exists(dataFileOut):
+                os.remove(dataFileOut)
+            if os.path.exists(expectedDataFileOut):
+              os.remove(expectedDataFileOut)
+            raise e
+
+        #Release the components and remove the generated files
+        comp.releaseObject()
+        source.releaseObject()
+        os.remove(dataFileIn)
+        os.remove(expectedDataFileOut)
+
+        print "........ PASSED\n"
+        return
+
+    def testFloatPortDataFormatStringHostNoswap(self):
+        #######################################################################
+        # Test Data Format String for Float Port, Host byte order input, no byte swapping
+        self.floatDataFormatStringTest(input_endian='host_order', swap_bytes=False)
+
+    def testFloatPortDataFormatStringHostSwap(self):
+        #######################################################################
+        # Test Data Format String for Float Port, Host byte order input, byte swapping
+        self.floatDataFormatStringTest(input_endian='host_order', swap_bytes=True)
+
+    def testFloatPortDataFormatStringLittleNoswap(self):
+        #######################################################################
+        # Test Data Format String for Float Port, little endian input, no byte swapping
+        self.floatDataFormatStringTest(input_endian='little_endian', swap_bytes=False)
+
+    def testFloatPortDataFormatStringLittleSwap(self):
+        #######################################################################
+        # Test Data Format String for Float Port, little endian input, byte swapping
+        self.floatDataFormatStringTest(input_endian='little_endian', swap_bytes=True)
+
+    def testFloatPortDataFormatStringBigNoswap(self):
+        #######################################################################
+        # Test Data Format String for Float Port, big endian input, no byte swapping
+        self.floatDataFormatStringTest(input_endian='big_endian', swap_bytes=False)
+
+    def testFloatPortDataFormatStringBigSwap(self):
+        #######################################################################
+        # Test Data Format String for Float Port, big endian input, byte swapping
+        self.floatDataFormatStringTest(input_endian='big_endian', swap_bytes=True)
+
+    def floatDataFormatStringTest(self, input_endian, swap_bytes):
+        #######################################################################
+        # Test Data Format String for Float Port
+        print "\n**TESTING DATA FORMAT STRING FOR FLOAT+INPUT=%s+SWAP=%s"%(input_endian,swap_bytes)
+
+        # If input byte order is Little (or Host and Host is Little), and not byte swap --> Little Endian output
+        # Otherwise, Big Endian output
+        if ((input_endian == 'little_endian' or (input_endian == 'host_order' and sys.byteorder == 'little')) != swap_bytes):
+            data_format_string = '32fr'
+        else:
+            data_format_string = '32f'
+
+        #Define test files
+        dataFileIn = './data.in'
+        dataFileOut = './data.%DT%.out'
+        expectedDataFileOut = './data.%s.out'%(data_format_string)
+
+        #Create Test Data File if it doesn't exist
+        if not os.path.isfile(dataFileIn):
+            with open(dataFileIn, 'wb') as dataIn:
+                dataIn.write(os.urandom(1024))
+
+        #Read in Data from Test File
+        size = os.path.getsize(dataFileIn)
+        with open (dataFileIn, 'rb') as dataIn:
+            data = list(struct.unpack('f' * (size/4), dataIn.read(size)))
+
+        #Create Components and Connections
+        comp = sb.launch('../FileWriter.spd.xml')
+        comp.destination_uri = dataFileOut
+        comp.advanced_properties.existing_file = "TRUNCATE"
+        comp.input_bulkio_byte_order = input_endian
+        comp.swap_bytes = swap_bytes
+
+        source = sb.DataSource(bytesPerPush=64, dataFormat='32f')
+        source.connect(comp,providesPortName='dataFloat_in')
+
+        #Start Components & Push Data
+        sb.start()
+        source.push(data)
+        time.sleep(2)
+        sb.stop()
+
+        #Check that the input and output files are the same
+        try:
+            self.assertTrue(os.path.isfile(expectedDataFileOut))
+        except self.failureException as e:
+            comp.releaseObject()
+            source.releaseObject()
+            os.remove(dataFileIn)
+            if os.path.exists(dataFileOut):
+                os.remove(dataFileOut)
+            if os.path.exists(expectedDataFileOut):
+              os.remove(expectedDataFileOut)
+            raise e
+
+        #Release the components and remove the generated files
+        comp.releaseObject()
+        source.releaseObject()
+        os.remove(dataFileIn)
+        os.remove(expectedDataFileOut)
+
+        print "........ PASSED\n"
+        return
+
+    def testDoublePortDataFormatStringHostNoswap(self):
+        #######################################################################
+        # Test Data Format String for Double Port, Host byte order input, no byte swapping
+        self.doubleDataFormatStringTest(input_endian='host_order', swap_bytes=False)
+
+    def testDoublePortDataFormatStringHostSwap(self):
+        #######################################################################
+        # Test Data Format String for Double Port, Host byte order input, byte swapping
+        self.doubleDataFormatStringTest(input_endian='host_order', swap_bytes=True)
+
+    def testDoublePortDataFormatStringLittleNoswap(self):
+        #######################################################################
+        # Test Data Format String for Double Port, little endian input, no byte swapping
+        self.doubleDataFormatStringTest(input_endian='little_endian', swap_bytes=False)
+
+    def testDoublePortDataFormatStringLittleSwap(self):
+        #######################################################################
+        # Test Data Format String for Double Port, little endian input, byte swapping
+        self.doubleDataFormatStringTest(input_endian='little_endian', swap_bytes=True)
+
+    def testDoublePortDataFormatStringBigNoswap(self):
+        #######################################################################
+        # Test Data Format String for Double Port, big endian input, no byte swapping
+        self.doubleDataFormatStringTest(input_endian='big_endian', swap_bytes=False)
+
+    def testDoublePortDataFormatStringBigSwap(self):
+        #######################################################################
+        # Test Data Format String for Double Port, big endian input, byte swapping
+        self.doubleDataFormatStringTest(input_endian='big_endian', swap_bytes=True)
+
+    def doubleDataFormatStringTest(self, input_endian, swap_bytes):
+        #######################################################################
+        # Test Data Format String for Double Port
+        print "\n**TESTING DATA FORMAT STRING FOR DOUBLE+INPUT=%s+SWAP=%s"%(input_endian,swap_bytes)
+
+        # If input byte order is Little (or Host and Host is Little), and not byte swap --> Little Endian output
+        # Otherwise, Big Endian output
+        if ((input_endian == 'little_endian' or (input_endian == 'host_order' and sys.byteorder == 'little')) != swap_bytes):
+            data_format_string = '64fr'
+        else:
+            data_format_string = '64f'
+
+        #Define test files
+        dataFileIn = './data.in'
+        dataFileOut = './data.%DT%.out'
+        expectedDataFileOut = './data.%s.out'%(data_format_string)
+
+        #Create Test Data File if it doesn't exist
+        if not os.path.isfile(dataFileIn):
+            with open(dataFileIn, 'wb') as dataIn:
+                dataIn.write(os.urandom(1024))
+
+        #Read in Data from Test File
+        size = os.path.getsize(dataFileIn)
+        with open (dataFileIn, 'rb') as dataIn:
+            data = list(struct.unpack('d' * (size/8), dataIn.read(size)))
+
+        #Create Components and Connections
+        comp = sb.launch('../FileWriter.spd.xml')
+        comp.destination_uri = dataFileOut
+        comp.advanced_properties.existing_file = "TRUNCATE"
+        comp.input_bulkio_byte_order = input_endian
+        comp.swap_bytes = swap_bytes
+
+        source = sb.DataSource(bytesPerPush=64, dataFormat='64f')
+        source.connect(comp,providesPortName='dataDouble_in')
+
+        #Start Components & Push Data
+        sb.start()
+        source.push(data)
+        time.sleep(2)
+        sb.stop()
+
+        #Check that the input and output files are the same
+        try:
+            self.assertTrue(os.path.isfile(expectedDataFileOut))
+        except self.failureException as e:
+            comp.releaseObject()
+            source.releaseObject()
+            os.remove(dataFileIn)
+            if os.path.exists(dataFileOut):
+                os.remove(dataFileOut)
+            if os.path.exists(expectedDataFileOut):
+              os.remove(expectedDataFileOut)
+            raise e
+
+        #Release the components and remove the generated files
+        comp.releaseObject()
+        source.releaseObject()
+        os.remove(dataFileIn)
+        os.remove(expectedDataFileOut)
+
+        print "........ PASSED\n"
+        return
+
+    def testXmlPortDataFormatStringHostNoswap(self):
+        #######################################################################
+        # Test Data Format String for Xml Port, Host byte order input, no byte swapping
+        self.xmlDataFormatStringTest(input_endian='host_order', swap_bytes=False)
+
+    def testXmlPortDataFormatStringHostSwap(self):
+        #######################################################################
+        # Test Data Format String for Xml Port, Host byte order input, byte swapping
+        self.xmlDataFormatStringTest(input_endian='host_order', swap_bytes=True)
+
+    def testXmlPortDataFormatStringLittleNoswap(self):
+        #######################################################################
+        # Test Data Format String for Xml Port, little endian input, no byte swapping
+        self.xmlDataFormatStringTest(input_endian='little_endian', swap_bytes=False)
+
+    def testXmlPortDataFormatStringLittleSwap(self):
+        #######################################################################
+        # Test Data Format String for Xml Port, little endian input, byte swapping
+        self.xmlDataFormatStringTest(input_endian='little_endian', swap_bytes=True)
+
+    def testXmlPortDataFormatStringBigNoswap(self):
+        #######################################################################
+        # Test Data Format String for Xml Port, big endian input, no byte swapping
+        self.xmlDataFormatStringTest(input_endian='big_endian', swap_bytes=False)
+
+    def testXmlPortDataFormatStringBigSwap(self):
+        #######################################################################
+        # Test Data Format String for Xml Port, big endian input, byte swapping
+        self.xmlDataFormatStringTest(input_endian='big_endian', swap_bytes=True)
+
+    def xmlDataFormatStringTest(self, input_endian, swap_bytes):
+        #######################################################################
+        # Test Data Format String for Xml Port
+        print "\n**TESTING DATA FORMAT STRING FOR XML+INPUT=%s+SWAP=%s"%(input_endian,swap_bytes)
+        
+        
+        data_format_string = '8t'
+
+        #Define test files
+        dataFileIn = './data.xml'
+        dataFileOut = './data.%DT%.out'
+        expectedDataFileOut = './data.%s.out'%(data_format_string)
+
+        #Read in Data from Test File
+        with open (dataFileIn, 'rb') as file:
+            data=file.read()
+
+        #Create Components and Connections
+        comp = sb.launch('../FileWriter.spd.xml')
+        comp.destination_uri = dataFileOut
+        comp.advanced_properties.existing_file = "TRUNCATE"
+        comp.input_bulkio_byte_order = input_endian
+        comp.swap_bytes = swap_bytes
+
+        source = sb.DataSource(bytesPerPush=64, dataFormat='xml')
+        source.connect(comp,providesPortName='dataXML_in')
+
+        #Start Components & Push Data
+        sb.start()
+        source.push(data)
+        time.sleep(2)
+        sb.stop()
+
+        #Check that the input and output files are the same
+        try:
+            self.assertTrue(os.path.isfile(expectedDataFileOut))
+        except self.failureException as e:
+            comp.releaseObject()
+            source.releaseObject()
+            if os.path.exists(dataFileOut):
+                os.remove(dataFileOut)
+            if os.path.exists(expectedDataFileOut):
+              os.remove(expectedDataFileOut)
+            raise e
+
+        #Release the components and remove the generated files
+        comp.releaseObject()
+        source.releaseObject()
+        os.remove(expectedDataFileOut)
+
+        print "........ PASSED\n"
+        return
+
 if __name__ == "__main__":
     ossie.utils.testing.main("../FileWriter.spd.xml") # By default tests all implementations
