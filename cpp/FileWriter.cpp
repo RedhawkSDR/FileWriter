@@ -1041,12 +1041,15 @@ std::pair<blue::HeaderControlBlock, std::vector<char> > FileWriter_i::createBlue
     }
 
     hcb.setDataSize(datasize - BLUEFILE_BLOCK_SIZE);
-    hcb.setHeaderRep(blue::IEEE); // Note: avoid EEEI headers (EEEI datasets are ok)
+    // Note: Write headers in native endiance; Ok to write data in either
+    hcb.setHeaderRep(blue::IEEE); // For blueFileLib, IEEE Represents local endiance as written
 
-    if (swap_bytes) {
-        hcb.setDataRep(blue::EEEI);
+    if((BULKIO_BYTE_ORDER==BYTE_ORDER) ^ swap_bytes) {
+    	LOG_DEBUG(FileWriter_i,"Setting BLUE file data_rep to native endiance.");
+        hcb.setDataRep(blue::IEEE); // For blueFileLib, IEEE Represents local endiance as written
     } else {
-        hcb.setDataRep(blue::IEEE);
+    	LOG_DEBUG(FileWriter_i,"Setting BLUE file data_rep to opposite of native endiance.");
+        hcb.setDataRep(blue::EEEI); // For blueFileLib, EEEI Represents opposite of local endiance.
     }
 
     // Turn SRI keywords to Midas Keywords

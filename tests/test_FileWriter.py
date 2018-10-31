@@ -2653,13 +2653,48 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         # Test Data Format String for Char Port, big endian input, byte swapping
         self.charDataFormatStringTest(input_endian='big_endian', swap_bytes=True)
 
-    def charDataFormatStringTest(self, input_endian, swap_bytes):
+    def testCharPortDataFormatStringHostNoswapBlue(self):
+        #######################################################################
+        # Test Data Format String for Char Port, Host byte order input, no byte swapping, BLUE file
+        self.charDataFormatStringTest(input_endian='host_order', swap_bytes=False, bluefile_out=True)
+
+    def testCharPortDataFormatStringHostSwapBlue(self):
+        #######################################################################
+        # Test Data Format String for Char Port, Host byte order input, byte swapping, BLUE file
+        self.charDataFormatStringTest(input_endian='host_order', swap_bytes=True, bluefile_out=True)
+
+    def testCharPortDataFormatStringLittleNoswapBlue(self):
+        #######################################################################
+        # Test Data Format String for Char Port, little endian input, no byte swapping, BLUE file
+        self.charDataFormatStringTest(input_endian='little_endian', swap_bytes=False, bluefile_out=True)
+
+    def testCharPortDataFormatStringLittleSwapBlue(self):
+        #######################################################################
+        # Test Data Format String for Char Port, little endian input, byte swapping, BLUE file
+        self.charDataFormatStringTest(input_endian='little_endian', swap_bytes=True, bluefile_out=True)
+
+    def testCharPortDataFormatStringBigNoswapBlue(self):
+        #######################################################################
+        # Test Data Format String for Char Port, big endian input, no byte swapping, BLUE file
+        self.charDataFormatStringTest(input_endian='big_endian', swap_bytes=False, bluefile_out=True)
+
+    def testCharPortDataFormatStringBigSwapBlue(self):
+        #######################################################################
+        # Test Data Format String for Char Port, big endian input, byte swapping, BLUE file
+        self.charDataFormatStringTest(input_endian='big_endian', swap_bytes=True, bluefile_out=True)
+
+    def charDataFormatStringTest(self, input_endian, swap_bytes, bluefile_out=False):
         #######################################################################
         # Test Data Format String for Char Port
-        print "\n**TESTING DATA FORMAT STRING FOR CHAR+INPUT=%s+SWAP=%s"%(input_endian,swap_bytes)
-        
-        
-        data_format_string = '8t'
+        print "\n**TESTING DATA FORMAT STRING FOR CHAR+INPUT=%s+SWAP=%s+BLUE=%s"%(input_endian,swap_bytes,bluefile_out)
+
+        blue_file_atom = 1
+        if ((input_endian == 'little_endian' or (input_endian == 'host_order' and sys.byteorder == 'little')) != swap_bytes):
+            blue_file_format = 'EEEI'
+            data_format_string = '8t'
+        else:
+            blue_file_format = 'IEEE'
+            data_format_string = '8t'
 
         #Define test files
         dataFileIn = './data.in'
@@ -2679,6 +2714,7 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         #Create Components and Connections
         comp = sb.launch('../FileWriter.spd.xml')
         comp.destination_uri = dataFileOut
+        comp.file_format = 'BLUEFILE' if bluefile_out else 'RAW'
         comp.advanced_properties.existing_file = "TRUNCATE"
         comp.input_bulkio_byte_order = input_endian
         comp.swap_bytes = swap_bytes
@@ -2695,6 +2731,12 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         #Check that the input and output files are the same
         try:
             self.assertTrue(os.path.isfile(expectedDataFileOut))
+            if bluefile_out:
+                hdr = bluefile.readheader(expectedDataFileOut, dict)
+                #from pprint import pprint as pp
+                #pp(hdr)
+                self.assertEqual(hdr['data_rep'], blue_file_format)
+                self.assertEqual(hdr['bpa'], blue_file_atom)
         except self.failureException as e:
             comp.releaseObject()
             source.releaseObject()
@@ -2835,17 +2877,50 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         # Test Data Format String for Short Port, big endian input, byte swapping
         self.shortDataFormatStringTest(input_endian='big_endian', swap_bytes=True)
 
-    def shortDataFormatStringTest(self, input_endian, swap_bytes):
+    def testShortPortDataFormatStringHostNoswapBlue(self):
+        #######################################################################
+        # Test Data Format String for Short Port, Host byte order input, no byte swapping
+        self.shortDataFormatStringTest(input_endian='host_order', swap_bytes=False, bluefile_out=True)
+
+    def testShortPortDataFormatStringHostSwapBlue(self):
+        #######################################################################
+        # Test Data Format String for Short Port, Host byte order input, byte swapping
+        self.shortDataFormatStringTest(input_endian='host_order', swap_bytes=True, bluefile_out=True)
+
+    def testShortPortDataFormatStringLittleNoswapBlue(self):
+        #######################################################################
+        # Test Data Format String for Short Port, little endian input, no byte swapping
+        self.shortDataFormatStringTest(input_endian='little_endian', swap_bytes=False, bluefile_out=True)
+
+    def testShortPortDataFormatStringLittleSwapBlue(self):
+        #######################################################################
+        # Test Data Format String for Short Port, little endian input, byte swapping
+        self.shortDataFormatStringTest(input_endian='little_endian', swap_bytes=True, bluefile_out=True)
+
+    def testShortPortDataFormatStringBigNoswapBlue(self):
+        #######################################################################
+        # Test Data Format String for Short Port, big endian input, no byte swapping
+        self.shortDataFormatStringTest(input_endian='big_endian', swap_bytes=False, bluefile_out=True)
+
+    def testShortPortDataFormatStringBigSwapBlue(self):
+        #######################################################################
+        # Test Data Format String for Short Port, big endian input, byte swapping
+        self.shortDataFormatStringTest(input_endian='big_endian', swap_bytes=True, bluefile_out=True)
+
+    def shortDataFormatStringTest(self, input_endian, swap_bytes, bluefile_out=False):
         #######################################################################
         # Test Data Format String for Short Port
         print "\n**TESTING DATA FORMAT STRING FOR SHORT+INPUT=%s+SWAP=%s"%(input_endian,swap_bytes)
 
         # If input byte order is Little (or Host and Host is Little), and not byte swap --> Little Endian output
         # Otherwise, Big Endian output
+        blue_file_atom = 2
         if ((input_endian == 'little_endian' or (input_endian == 'host_order' and sys.byteorder == 'little')) != swap_bytes):
             data_format_string = '16tr'
+            blue_file_format = 'EEEI'
         else:
             data_format_string = '16t'
+            blue_file_format = 'IEEE'
 
         #Define test files
         dataFileIn = './data.in'
@@ -2865,6 +2940,7 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         #Create Components and Connections
         comp = sb.launch('../FileWriter.spd.xml')
         comp.destination_uri = dataFileOut
+        comp.file_format = 'BLUEFILE' if bluefile_out else 'RAW'
         comp.advanced_properties.existing_file = "TRUNCATE"
         comp.input_bulkio_byte_order = input_endian
         comp.swap_bytes = swap_bytes
@@ -2881,6 +2957,12 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         #Check that the input and output files are the same
         try:
             self.assertTrue(os.path.isfile(expectedDataFileOut))
+            if bluefile_out:
+                hdr = bluefile.readheader(expectedDataFileOut, dict)
+                #from pprint import pprint as pp
+                #pp(hdr)
+                self.assertEqual(hdr['data_rep'], blue_file_format)
+                self.assertEqual(hdr['bpa'], blue_file_atom)
         except self.failureException as e:
             comp.releaseObject()
             source.releaseObject()
@@ -2930,17 +3012,50 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         # Test Data Format String for UShort Port, big endian input, byte swapping
         self.ushortDataFormatStringTest(input_endian='big_endian', swap_bytes=True)
 
-    def ushortDataFormatStringTest(self, input_endian, swap_bytes):
+    def testUShortPortDataFormatStringHostNoswapBlue(self):
+        #######################################################################
+        # Test Data Format String for UShort Port, Host byte order input, no byte swapping, BLUE file
+        self.ushortDataFormatStringTest(input_endian='host_order', swap_bytes=False, bluefile_out=True)
+
+    def testUShortPortDataFormatStringHostSwapBlue(self):
+        #######################################################################
+        # Test Data Format String for UShort Port, Host byte order input, byte swapping, BLUE file
+        self.ushortDataFormatStringTest(input_endian='host_order', swap_bytes=True, bluefile_out=True)
+
+    def testUShortPortDataFormatStringLittleNoswapBlue(self):
+        #######################################################################
+        # Test Data Format String for UShort Port, little endian input, no byte swapping, BLUE file
+        self.ushortDataFormatStringTest(input_endian='little_endian', swap_bytes=False, bluefile_out=True)
+
+    def testUShortPortDataFormatStringLittleSwapBlue(self):
+        #######################################################################
+        # Test Data Format String for UShort Port, little endian input, byte swapping, BLUE file
+        self.ushortDataFormatStringTest(input_endian='little_endian', swap_bytes=True, bluefile_out=True)
+
+    def testUShortPortDataFormatStringBigNoswapBlue(self):
+        #######################################################################
+        # Test Data Format String for UShort Port, big endian input, no byte swapping, BLUE file
+        self.ushortDataFormatStringTest(input_endian='big_endian', swap_bytes=False, bluefile_out=True)
+
+    def testUShortPortDataFormatStringBigSwapBlue(self):
+        #######################################################################
+        # Test Data Format String for UShort Port, big endian input, byte swapping, BLUE file
+        self.ushortDataFormatStringTest(input_endian='big_endian', swap_bytes=True, bluefile_out=True)
+
+    def ushortDataFormatStringTest(self, input_endian, swap_bytes, bluefile_out=False):
         #######################################################################
         # Test Data Format String for UShort Port
-        print "\n**TESTING DATA FORMAT STRING FOR USHORT+INPUT=%s+SWAP=%s"%(input_endian,swap_bytes)
+        print "\n**TESTING DATA FORMAT STRING FOR USHORT+INPUT=%s+SWAP=%s+BLUE=%s"%(input_endian,swap_bytes,bluefile_out)
 
         # If input byte order is Little (or Host and Host is Little), and not byte swap --> Little Endian output
         # Otherwise, Big Endian output
+        blue_file_atom = 2
         if ((input_endian == 'little_endian' or (input_endian == 'host_order' and sys.byteorder == 'little')) != swap_bytes):
             data_format_string = '16or'
+            blue_file_format = 'EEEI'
         else:
             data_format_string = '16o'
+            blue_file_format = 'IEEE'
 
         #Define test files
         dataFileIn = './data.in'
@@ -2960,6 +3075,7 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         #Create Components and Connections
         comp = sb.launch('../FileWriter.spd.xml')
         comp.destination_uri = dataFileOut
+        comp.file_format = 'BLUEFILE' if bluefile_out else 'RAW'
         comp.advanced_properties.existing_file = "TRUNCATE"
         comp.input_bulkio_byte_order = input_endian
         comp.swap_bytes = swap_bytes
@@ -2976,6 +3092,12 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         #Check that the input and output files are the same
         try:
             self.assertTrue(os.path.isfile(expectedDataFileOut))
+            if bluefile_out:
+                hdr = bluefile.readheader(expectedDataFileOut, dict)
+                #from pprint import pprint as pp
+                #pp(hdr)
+                self.assertEqual(hdr['data_rep'], blue_file_format)
+                self.assertEqual(hdr['bpa'], blue_file_atom)
         except self.failureException as e:
             comp.releaseObject()
             source.releaseObject()
@@ -3025,17 +3147,50 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         # Test Data Format String for Float Port, big endian input, byte swapping
         self.floatDataFormatStringTest(input_endian='big_endian', swap_bytes=True)
 
-    def floatDataFormatStringTest(self, input_endian, swap_bytes):
+    def testFloatPortDataFormatStringHostNoswapBlue(self):
+        #######################################################################
+        # Test Data Format String for Float Port, Host byte order input, no byte swapping, BLUE file
+        self.floatDataFormatStringTest(input_endian='host_order', swap_bytes=False, bluefile_out=True)
+
+    def testFloatPortDataFormatStringHostSwapBlue(self):
+        #######################################################################
+        # Test Data Format String for Float Port, Host byte order input, byte swapping, BLUE file
+        self.floatDataFormatStringTest(input_endian='host_order', swap_bytes=True, bluefile_out=True)
+
+    def testFloatPortDataFormatStringLittleNoswapBlue(self):
+        #######################################################################
+        # Test Data Format String for Float Port, little endian input, no byte swapping, BLUE file
+        self.floatDataFormatStringTest(input_endian='little_endian', swap_bytes=False, bluefile_out=True)
+
+    def testFloatPortDataFormatStringLittleSwapBlue(self):
+        #######################################################################
+        # Test Data Format String for Float Port, little endian input, byte swapping, BLUE file
+        self.floatDataFormatStringTest(input_endian='little_endian', swap_bytes=True, bluefile_out=True)
+
+    def testFloatPortDataFormatStringBigNoswapBlue(self):
+        #######################################################################
+        # Test Data Format String for Float Port, big endian input, no byte swapping, BLUE file
+        self.floatDataFormatStringTest(input_endian='big_endian', swap_bytes=False, bluefile_out=True)
+
+    def testFloatPortDataFormatStringBigSwapBlue(self):
+        #######################################################################
+        # Test Data Format String for Float Port, big endian input, byte swapping, BLUE file
+        self.floatDataFormatStringTest(input_endian='big_endian', swap_bytes=True, bluefile_out=True)
+
+    def floatDataFormatStringTest(self, input_endian, swap_bytes, bluefile_out=False):
         #######################################################################
         # Test Data Format String for Float Port
-        print "\n**TESTING DATA FORMAT STRING FOR FLOAT+INPUT=%s+SWAP=%s"%(input_endian,swap_bytes)
+        print "\n**TESTING DATA FORMAT STRING FOR FLOAT+INPUT=%s+SWAP=%s+BLUE=%s"%(input_endian,swap_bytes,bluefile_out)
 
         # If input byte order is Little (or Host and Host is Little), and not byte swap --> Little Endian output
         # Otherwise, Big Endian output
+        blue_file_atom = 4
         if ((input_endian == 'little_endian' or (input_endian == 'host_order' and sys.byteorder == 'little')) != swap_bytes):
             data_format_string = '32fr'
+            blue_file_format = 'EEEI'
         else:
             data_format_string = '32f'
+            blue_file_format = 'IEEE'
 
         #Define test files
         dataFileIn = './data.in'
@@ -3055,6 +3210,7 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         #Create Components and Connections
         comp = sb.launch('../FileWriter.spd.xml')
         comp.destination_uri = dataFileOut
+        comp.file_format = 'BLUEFILE' if bluefile_out else 'RAW'
         comp.advanced_properties.existing_file = "TRUNCATE"
         comp.input_bulkio_byte_order = input_endian
         comp.swap_bytes = swap_bytes
@@ -3071,6 +3227,12 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         #Check that the input and output files are the same
         try:
             self.assertTrue(os.path.isfile(expectedDataFileOut))
+            if bluefile_out:
+                hdr = bluefile.readheader(expectedDataFileOut, dict)
+                #from pprint import pprint as pp
+                #pp(hdr)
+                self.assertEqual(hdr['data_rep'], blue_file_format)
+                self.assertEqual(hdr['bpa'], blue_file_atom)
         except self.failureException as e:
             comp.releaseObject()
             source.releaseObject()
@@ -3120,17 +3282,50 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         # Test Data Format String for Double Port, big endian input, byte swapping
         self.doubleDataFormatStringTest(input_endian='big_endian', swap_bytes=True)
 
-    def doubleDataFormatStringTest(self, input_endian, swap_bytes):
+    def testDoublePortDataFormatStringHostNoswapBlue(self):
+        #######################################################################
+        # Test Data Format String for Double Port, Host byte order input, no byte swapping, BLUE file
+        self.doubleDataFormatStringTest(input_endian='host_order', swap_bytes=False, bluefile_out=True)
+
+    def testDoublePortDataFormatStringHostSwapBlue(self):
+        #######################################################################
+        # Test Data Format String for Double Port, Host byte order input, byte swapping, BLUE file
+        self.doubleDataFormatStringTest(input_endian='host_order', swap_bytes=True, bluefile_out=True)
+
+    def testDoublePortDataFormatStringLittleNoswapBlue(self):
+        #######################################################################
+        # Test Data Format String for Double Port, little endian input, no byte swapping, BLUE file
+        self.doubleDataFormatStringTest(input_endian='little_endian', swap_bytes=False, bluefile_out=True)
+
+    def testDoublePortDataFormatStringLittleSwapBlue(self):
+        #######################################################################
+        # Test Data Format String for Double Port, little endian input, byte swapping, BLUE file
+        self.doubleDataFormatStringTest(input_endian='little_endian', swap_bytes=True, bluefile_out=True)
+
+    def testDoublePortDataFormatStringBigNoswapBlue(self):
+        #######################################################################
+        # Test Data Format String for Double Port, big endian input, no byte swapping, BLUE file
+        self.doubleDataFormatStringTest(input_endian='big_endian', swap_bytes=False, bluefile_out=True)
+
+    def testDoublePortDataFormatStringBigSwapBlue(self):
+        #######################################################################
+        # Test Data Format String for Double Port, big endian input, byte swapping, BLUE file
+        self.doubleDataFormatStringTest(input_endian='big_endian', swap_bytes=True, bluefile_out=True)
+
+    def doubleDataFormatStringTest(self, input_endian, swap_bytes, bluefile_out=False):
         #######################################################################
         # Test Data Format String for Double Port
-        print "\n**TESTING DATA FORMAT STRING FOR DOUBLE+INPUT=%s+SWAP=%s"%(input_endian,swap_bytes)
+        print "\n**TESTING DATA FORMAT STRING FOR DOUBLE+INPUT=%s+SWAP=%s+BLUE=%s"%(input_endian,swap_bytes,bluefile_out)
 
         # If input byte order is Little (or Host and Host is Little), and not byte swap --> Little Endian output
         # Otherwise, Big Endian output
+        blue_file_atom = 8
         if ((input_endian == 'little_endian' or (input_endian == 'host_order' and sys.byteorder == 'little')) != swap_bytes):
             data_format_string = '64fr'
+            blue_file_format = 'EEEI'
         else:
             data_format_string = '64f'
+            blue_file_format = 'IEEE'
 
         #Define test files
         dataFileIn = './data.in'
@@ -3150,6 +3345,7 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         #Create Components and Connections
         comp = sb.launch('../FileWriter.spd.xml')
         comp.destination_uri = dataFileOut
+        comp.file_format = 'BLUEFILE' if bluefile_out else 'RAW'
         comp.advanced_properties.existing_file = "TRUNCATE"
         comp.input_bulkio_byte_order = input_endian
         comp.swap_bytes = swap_bytes
@@ -3166,6 +3362,12 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         #Check that the input and output files are the same
         try:
             self.assertTrue(os.path.isfile(expectedDataFileOut))
+            if bluefile_out:
+                hdr = bluefile.readheader(expectedDataFileOut, dict)
+                #from pprint import pprint as pp
+                #pp(hdr)
+                self.assertEqual(hdr['data_rep'], blue_file_format)
+                self.assertEqual(hdr['bpa'], blue_file_atom)
         except self.failureException as e:
             comp.releaseObject()
             source.releaseObject()
