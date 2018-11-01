@@ -25,13 +25,32 @@
 
 URI accepted prefixes:
 file://	Local Filesystem
-sca:// 	SCA Filesystem (path relative to SDRROOT/dom)</description>
+sca:// 	SCA Filesystem (path relative to SDRROOT/dom)
+
+There are several key words that can be used to insert stream- or data-specific information into the file name. Some common examples are below; see the README.md for additional options.
+%STREAMID%    The stream ID
+%TIMESTAMP%  The timestamp of the first sample of the file
+%MODE%           The mode (Scalar or Complex)
+%SR%                 The sample rate
+%DT%                 The data type and format (described below)
+
+The data format tag is based on the BulkIO input port and the byte order of the data. The byte order is determined used the input_bulkio_byte_order and swap_bytes properties.
+8t    Char or XML input; Big or Little Endian
+8o    Octet input; Big or Little Endian
+16t   Short input; Big Endian
+16tr  Short input; Little Endian
+16o   Unsigned Short input; Big Endian
+16or  Unsigned Short input; Little Endian
+32f    32-bit Float input; Big Endian
+32fr   32-bit Float input; Little Endian
+64f    64-bit Double input; Big Endian
+64fr   64-bit Double input; Little Endian</description>
     <value>sca:///data/%STREAMID%.%TIMESTAMP%.%MODE%.%SR%.%DT%</value>
     <kind kindtype="property"/>
     <action type="external"/>
   </simple>
   <simple id="destination_uri_suffix" mode="readwrite" name="destination_uri_suffix" type="string">
-    <description>An optional prefix to be appended to the destination_uri.</description>
+    <description>An optional suffix to be appended to the destination_uri.</description>
     <value></value>
     <kind kindtype="property"/>
     <action type="external"/>
@@ -198,7 +217,7 @@ Note: Changing this property will take affect on the next new file that is initi
     <configurationkind kindtype="property"/>
   </struct>
   <simple id="input_bulkio_byte_order" mode="readwrite" name="input_bulkio_byte_order" type="string">
-    <description>Specifies the byte order (endianness) of the incoming BulkIO data. Host byte order will treat the incoming data as the endianness of the host system. This property, along with the swap_bytes property, will determine the data format indicator string included in the file name when %DT% string replacement is used.</description>
+    <description>Specifies the byte order (endianness) of the incoming BulkIO data. By default, the incoming data will be treated as the endianness of the host system (Host Byte Order). If it is known that the incoming data is of a byte order different than the host, Big or Little Endian may be chosen. Host Byte Order should almost always be used because byte order is converted between hosts by CORBA automatically when necessary. This property, along with the swap_bytes property, will determine the data format indicator string included in the file name when %DT% string replacement is used.</description>
     <value>host_order</value>
     <enumerations>
       <enumeration label="Host Byte Order" value="host_order"/>
