@@ -2918,9 +2918,11 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         if ((input_endian == 'little_endian' or (input_endian == 'host_order' and sys.byteorder == 'little')) != swap_bytes):
             data_format_string = '16tr'
             blue_file_format = 'EEEI'
+            unpack_char = '<'
         else:
             data_format_string = '16t'
             blue_file_format = 'IEEE'
+            unpack_char = '>'
 
         #Define test files
         dataFileIn = './data.in'
@@ -2936,6 +2938,12 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         size = os.path.getsize(dataFileIn)
         with open (dataFileIn, 'rb') as dataIn:
             data = list(struct.unpack('h' * (size/2), dataIn.read(size)))
+            #print 'Data input:          ', data
+
+        expectedData = data
+        if input_endian not in (sys.byteorder+'_endian','host_order'):
+            expectedData = list(struct.unpack('<'+'h'*len(data), struct.pack('>'+'h'*len(data), *data)))
+        #print 'Expected data output:', expectedData
 
         #Create Components and Connections
         comp = sb.launch('../FileWriter.spd.xml')
@@ -2958,11 +2966,18 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         try:
             self.assertTrue(os.path.isfile(expectedDataFileOut))
             if bluefile_out:
-                hdr = bluefile.readheader(expectedDataFileOut, dict)
+                hdr, d = bluefile.read(expectedDataFileOut, dict)
+                readData = list(d) # this is always in host order
                 #from pprint import pprint as pp
                 #pp(hdr)
                 self.assertEqual(hdr['data_rep'], blue_file_format)
                 self.assertEqual(hdr['bpa'], blue_file_atom)
+            else:
+                size = os.path.getsize(expectedDataFileOut)
+                with open (expectedDataFileOut, 'rb') as dataIn:
+                    readData = list(struct.unpack(unpack_char + 'h' * (size/2), dataIn.read(size)))
+            #print 'Actual data out:     ', readData
+            self.assertEqual(expectedData, readData)
         except self.failureException as e:
             comp.releaseObject()
             source.releaseObject()
