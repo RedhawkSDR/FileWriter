@@ -1884,7 +1884,17 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         os.remove(seconddataFileOut)
         os.remove(dataFileOut)
 
-    def testMetaDataFile(self):
+    def testMetaDataFileNoncontinguous(self):
+        self.metaDataFileTests(contiguous=False)
+
+    def testMetaDataFileContinguous(self):
+        self.metaDataFileTests(contiguous=True)
+
+    def metaDataFileTests(self, contiguous):
+
+        gap = 0.0
+        if not contiguous:
+            gap = 5.0
 
         dataFileOut = './testdata.out'
         seconddataFileOut = dataFileOut+'-1'
@@ -1928,15 +1938,16 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         #Push packet of data
         timecode_sent = []
         timestamp = createTs() # same as bulkio.timestamp.now()
+        timestamp.tfsec = 0.0 # start at 0 so we don't have to worry about normalization
         port.pushPacket(data, timestamp, False, "test_streamID")
         timecode_sent.append(timestamp)
-        timestamp = createTs()
+        timestamp = createTs(timestamp.twsec, timestamp.tfsec+len(data)*sri1.xdelta)
         port.pushPacket(data, timestamp, False, "test_streamID")
         timecode_sent.append(timestamp)
-        timestamp = createTs()
+        timestamp = createTs(timestamp.twsec, timestamp.tfsec+len(data)*sri1.xdelta)
         port.pushPacket(data, timestamp, False, "test_streamID")
         timecode_sent.append(timestamp)
-        timestamp = createTs()
+        timestamp = createTs(timestamp.twsec, timestamp.tfsec+len(data)*sri1.xdelta)
         port.pushPacket(data2, timestamp, False, "test_streamID")
         timecode_sent.append(timestamp)
         # Create an SRI with a changed keyword
@@ -1956,7 +1967,7 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
                                   keywords=kws)
         # Push SRI
         port.pushSRI(sri1)
-        timestamp = createTs()
+        timestamp = createTs(timestamp.twsec+gap, timestamp.tfsec+len(data)*sri1.xdelta)
         port.pushPacket(data2, timestamp, True, "test_streamID")
         timecode_sent.append(timestamp)
         time.sleep(1)
