@@ -175,11 +175,11 @@ private:
     void destination_uri_suffixChanged(std::string oldValue, std::string newValue);
     void change_uri();
     void file_formatChanged(std::string oldValue, std::string newValue);
-    void recording_enabledChanged(bool oldValue, const bool *newValue);
     void advanced_propertiesChanged(const advanced_properties_struct &oldValue, const advanced_properties_struct &newValue);
     void recording_timerChanged(const std::vector<timer_struct_struct> &oldValue, const std::vector<timer_struct_struct> &newValue);
     void construct_recording_timer(const std::vector<timer_struct_struct> &timers);
     void input_bulkio_byte_orderChanged(std::string oldValue, std::string newValue);
+    void swap_bytesChanged(bool oldValue, bool newValue);
     
     long maxSize;
     std::string prop_dirname;
@@ -208,6 +208,7 @@ private:
     std::map<std::string, std::string> stream_to_file_mapping;
     std::map<std::string, file_struct> file_to_struct_mapping;
 
+    bool PERFORM_BYTE_SWAP;
     long BULKIO_BYTE_ORDER;
 
     bool remove_file_from_filesystem(const std::string& filename){
@@ -254,7 +255,7 @@ private:
         //   - Byte order is Little Endian and we ARE NOT byte swapping
         //   - Byte order is Big Endian and we ARE byte swapping
         std::string endian = "";
-        if((BULKIO_BYTE_ORDER==LITTLE_ENDIAN) ^ swap_bytes)
+        if((BULKIO_BYTE_ORDER==LITTLE_ENDIAN) ^ PERFORM_BYTE_SWAP)
             endian = "r";
 
         std::string format = "";
@@ -275,7 +276,7 @@ private:
             format = "8o";
         }
 
-        LOG_DEBUG(FileWriter_i,"data_format_string="<<format<<"  BYTE_ORDER="<<BULKIO_BYTE_ORDER<<"  swap_bytes="<<swap_bytes);
+        LOG_DEBUG(FileWriter_i,"data_format_string="<<format<<"  BYTE_ORDER="<<BULKIO_BYTE_ORDER<<"  PERFORM_BYTE_SWAP="<<PERFORM_BYTE_SWAP);
         return format;
     }
 

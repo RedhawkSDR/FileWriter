@@ -72,7 +72,10 @@ void FileWriter_i::constructor() {
         LOG_ERROR(FileWriter_i,"Could not determine host byte order ["<<BYTE_ORDER<<"], defaulting to Little Endian");
     }
 
-    // Determine BulkIO input byte order
+    // Store prop in variable that only updates when no active streams or open files
+    PERFORM_BYTE_SWAP = swap_bytes;
+
+    // Determine BulkIO input byte order - this variable also only updates when no active streams or open files
     if (input_bulkio_byte_order == "little_endian") {
         BULKIO_BYTE_ORDER = LITTLE_ENDIAN;
     } else if (input_bulkio_byte_order == "big_endian") {
@@ -225,22 +228,32 @@ void FileWriter_i::construct_recording_timer(const std::vector<timer_struct_stru
     timer_set_iter = timer_set.begin();
 }
 
-void FileWriter_i::input_bulkio_byte_orderChanged(std::string oldValue, std::string newValue){
+void FileWriter_i::input_bulkio_byte_orderChanged(std::string oldValue, std::string newValue) {
     exclusive_lock lock(service_thread_lock);
     if (oldValue != newValue) {
+        // Note: Do not update BULKIO_BYTE_ORDER -- done in singleService when no active streams/files
         if (newValue == "little_endian") {
             LOG_DEBUG(FileWriter_i,"input_bulkio_byte_order changed from "<<oldValue<<" to "<<newValue);
-            BULKIO_BYTE_ORDER = LITTLE_ENDIAN;
+            //BULKIO_BYTE_ORDER = LITTLE_ENDIAN;
         } else if (newValue ==  "big_endian") {
             LOG_DEBUG(FileWriter_i,"input_bulkio_byte_order changed from "<<oldValue<<" to "<<newValue);
-            BULKIO_BYTE_ORDER = BIG_ENDIAN;
+            //BULKIO_BYTE_ORDER = BIG_ENDIAN;
         } else if (newValue == "host_order") {
             LOG_DEBUG(FileWriter_i,"input_bulkio_byte_order changed from "<<oldValue<<" to "<<newValue);
-            BULKIO_BYTE_ORDER = BYTE_ORDER;
+            //BULKIO_BYTE_ORDER = BYTE_ORDER;
         } else {
             LOG_ERROR(FileWriter_i,"Configured with invalid input_bulkio_byte_order value: "<<newValue<<"; Reverting back to previous value: "<<oldValue);
             input_bulkio_byte_order = oldValue;
         }
+    }
+}
+
+void FileWriter_i::swap_bytesChanged(bool oldValue, bool newValue) {
+    exclusive_lock lock(service_thread_lock);
+    if (oldValue != newValue) {
+        // Note: Do not update PERFORM_BYTE_SWAP -- done in singleService when no active streams/files
+        LOG_DEBUG(FileWriter_i,"swap_bytes value changed from "<<oldValue<<" to "<<newValue);
+        //PERFORM_BYTE_SWAP = swap_bytes;
     }
 }
 
@@ -401,6 +414,18 @@ int FileWriter_i::serviceFunction() {
  * A templated service function that is generic between data types.
  */
 template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * dataIn) {
+    if (stream_to_file_mapping.empty() && file_to_struct_mapping.empty()) {
+        // No active streams and no open files
+        // Update byte swap and determine BulkIO input byte order for new stream
+        PERFORM_BYTE_SWAP = swap_bytes;
+        if (input_bulkio_byte_order == "little_endian") {
+            BULKIO_BYTE_ORDER = LITTLE_ENDIAN;
+        } else if (input_bulkio_byte_order == "big_endian") {
+            BULKIO_BYTE_ORDER = BIG_ENDIAN;
+        } else { // host_order
+            BULKIO_BYTE_ORDER = BYTE_ORDER;
+        }
+    }
     typename IN_PORT_TYPE::dataTransfer *packet = dataIn->getPacket(0);
     if (packet == NULL)
         return false;
@@ -498,7 +523,7 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
     }
 
     // BYTE SWAP
-    if (swap_bytes) {
+    if (PERFORM_BYTE_SWAP) {
         if (sizeof(packet->dataBuffer[0]) == sizeof(uint16_t)) {
             LOG_DEBUG(FileWriter_i, "SWAP_BYTES - swapping 16");
             std::vector<uint16_t> *svp = (std::vector<uint16_t> *) & packet->dataBuffer;
@@ -1045,11 +1070,11 @@ std::pair<blue::HeaderControlBlock, std::vector<char> > FileWriter_i::createBlue
     // Note: Write headers in native endiance; Ok to write data in either
     hcb.setHeaderRep(blue::IEEE); // For blueFileLib, IEEE Represents local endiance as written
 
-    if((BULKIO_BYTE_ORDER==BYTE_ORDER) ^ swap_bytes) {
-    	LOG_DEBUG(FileWriter_i,"Setting BLUE file data_rep to native endiance.");
+    if((BULKIO_BYTE_ORDER==BYTE_ORDER) ^ PERFORM_BYTE_SWAP) {
+        LOG_DEBUG(FileWriter_i,"Setting BLUE file data_rep to native endiance.");
         hcb.setDataRep(blue::IEEE); // For blueFileLib, IEEE Represents local endiance as written
     } else {
-    	LOG_DEBUG(FileWriter_i,"Setting BLUE file data_rep to opposite of native endiance.");
+        LOG_DEBUG(FileWriter_i,"Setting BLUE file data_rep to opposite of native endiance.");
         hcb.setDataRep(blue::EEEI); // For blueFileLib, EEEI Represents opposite of local endiance.
     }
 

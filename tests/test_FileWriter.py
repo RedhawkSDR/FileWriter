@@ -32,6 +32,7 @@ from bulkio.sri import create as createSri
 from bulkio.timestamp import create as createTs
 from xml.dom import minidom
 
+DEBUG_LEVEL = 3
 
 ###############################################################
 # FIXES TO bluefile_helpers.py
@@ -3492,6 +3493,187 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         comp.releaseObject()
         source.releaseObject()
         os.remove(expectedDataFileOut)
+
+        print "........ PASSED\n"
+        return
+
+    def testByteOrderMidFileRawNoStreams(self):
+        #######################################################################
+        # Test Byte Order Mid-File RAW No Streams
+        self.byteChangeByteOrderPropsMidFile(bluefile_out=False, change_swap=False, change_input=True, close_streams=True)
+
+    def testByteOrderMidFileBlueNoStreams(self):
+        #######################################################################
+        # Test Byte Order Mid-File BLUE No Streams
+        self.byteChangeByteOrderPropsMidFile(bluefile_out=True, change_swap=False, change_input=True, close_streams=True)
+
+    def testByteSwapMidFileRawNoStreams(self):
+        #######################################################################
+        # Test Byte Swap Mid-File RAW No Streams
+        self.byteChangeByteOrderPropsMidFile(bluefile_out=False, change_swap=True, change_input=False, close_streams=True)
+
+    def testByteSwapMidFileBlueNoStreams(self):
+        #######################################################################
+        # Test Byte Swap Mid-File BLUE No Streams
+        self.byteChangeByteOrderPropsMidFile(bluefile_out=True, change_swap=True, change_input=False, close_streams=True)
+
+    def testByteOrderMidFileRaw(self):
+        #######################################################################
+        # Test Byte Order Mid-File RAW
+        self.byteChangeByteOrderPropsMidFile(bluefile_out=False, change_swap=False, change_input=True, close_streams=False)
+
+    def testByteOrderMidFileBlue(self):
+        #######################################################################
+        # Test Byte Order Mid-File BLUE
+        self.byteChangeByteOrderPropsMidFile(bluefile_out=True, change_swap=False, change_input=True, close_streams=False)
+
+    def testByteSwapMidFileRaw(self):
+        #######################################################################
+        # Test Byte Swap Mid-File RAW
+        self.byteChangeByteOrderPropsMidFile(bluefile_out=False, change_swap=True, change_input=False, close_streams=False)
+
+    def testByteSwapMidFileBlue(self):
+        #######################################################################
+        # Test Byte Swap Mid-File BLUE
+        self.byteChangeByteOrderPropsMidFile(bluefile_out=True, change_swap=True, change_input=False, close_streams=False)
+
+    def byteChangeByteOrderPropsMidFile(self, bluefile_out, change_swap, change_input, close_streams):
+        #######################################################################
+        # Test Byte Swap Mid-File
+        print "\n**TESTING BYTE %s%s CHANGE IN MIDDLE OF %s FILE WITH %s STREAMS"%('SWAP'  if change_swap   else '',
+                                                                                   'ORDER' if change_input  else '',
+                                                                                   'BLUE'  if bluefile_out  else 'RAW',
+                                                                                   'NO'    if close_streams else 'ACTIVE')
+
+        # Input byte order is Little and not byte swap --> Little Endian output
+        blue_file_atom = 2
+        input_endian = 'little_endian'
+        data_format_string = '16tr'
+        blue_file_format = 'EEEI'
+        unpack_char = '<'
+        
+        # If changing both, remains little; Otherwise, changes to big
+        if (change_swap == change_input):
+            input_endian2 = 'little_endian'
+            data_format_string2 = '16tr'
+            blue_file_format2 = 'EEEI'
+            unpack_char2 = '<'
+        else:
+            input_endian2 = 'big_endian'
+            data_format_string2 = '16t'
+            blue_file_format2 = 'IEEE'
+            unpack_char2 = '>'
+        
+
+        #Define test files
+        dataFileIn = './data.in'
+        dataFileOut = './data.%DT%.out'
+        expectedDataFileOut  = './data.%s.out'%(data_format_string)
+        expectedDataFileOut2 = './data.%s.out'%(data_format_string2)
+
+        #Create Test Data File if it doesn't exist
+        if not os.path.isfile(dataFileIn):
+            with open(dataFileIn, 'wb') as dataIn:
+                dataIn.write(os.urandom(24))
+
+        #Read in Data from Test File
+        size = os.path.getsize(dataFileIn)
+        with open (dataFileIn, 'rb') as dataIn:
+            data = list(struct.unpack('h' * (size/2), dataIn.read(size)))
+            #print 'Data input:           ', data
+
+        expectedData = data
+        if input_endian != sys.byteorder+'_endian':
+            expectedData = list(struct.unpack('<'+'h'*len(data), struct.pack('>'+'h'*len(data), *data)))
+        if close_streams:
+            expectedData2 = data
+            if input_endian2 != sys.byteorder+'_endian' and not change_swap:
+                expectedData2 = list(struct.unpack('<'+'h'*len(data), struct.pack('>'+'h'*len(data), *data)))
+        else:
+            expectedData = expectedData*2
+            
+        #print 'Expected data output: ', expectedData
+        #if close_streams:
+        #    print 'Expected data2 output:', expectedData2
+
+        #Create Components and Connections
+        comp = sb.launch('../FileWriter.spd.xml', execparams={'DEBUG_LEVEL':DEBUG_LEVEL})
+        comp.destination_uri = dataFileOut
+        comp.file_format = 'BLUEFILE' if bluefile_out else 'RAW'
+        comp.advanced_properties.existing_file = "TRUNCATE"
+        comp.input_bulkio_byte_order = input_endian
+        comp.swap_bytes = False
+
+        source = sb.DataSource(bytesPerPush=64, dataFormat='16t')
+        source.connect(comp,providesPortName='dataShort_in')
+
+        #Start Components & Push Data
+        sb.start()
+        source.push(data, close_streams)
+        time.sleep(1)
+        if change_swap:
+            comp.swap_bytes = True
+        if change_input:
+            comp.input_bulkio_byte_order = input_endian2
+        source.push(data, close_streams)
+        time.sleep(2)
+        sb.stop()
+
+        #Check that the input and output files are the same
+        try:
+            self.assertTrue(os.path.isfile(expectedDataFileOut))
+            if bluefile_out:
+                hdr, d = bluefile.read(expectedDataFileOut, dict)
+                readData = list(d) # this is always in host order
+                #from pprint import pprint as pp
+                #pp(hdr)
+                self.assertEqual(hdr['data_rep'], blue_file_format)
+                self.assertEqual(hdr['bpa'], blue_file_atom)
+            else:
+                size = os.path.getsize(expectedDataFileOut)
+                with open (expectedDataFileOut, 'rb') as dataIn:
+                    readData = list(struct.unpack(unpack_char + 'h' * (size/2), dataIn.read(size)))
+            #print 'Actual data out:      ', readData
+            self.assertEqual(expectedData, readData)
+            if close_streams:
+                # TODO - open second file to compare
+                self.assertTrue(os.path.isfile(expectedDataFileOut2))
+                if bluefile_out:
+                    hdr2, d2 = bluefile.read(expectedDataFileOut2, dict)
+                    readData2 = list(d2) # this is always in host order
+                    #from pprint import pprint as pp
+                    #pp(hdr2)
+                    self.assertEqual(hdr2['data_rep'], blue_file_format2)
+                    self.assertEqual(hdr2['bpa'], blue_file_atom)
+                else:
+                    size2 = os.path.getsize(expectedDataFileOut2)
+                    with open (expectedDataFileOut2, 'rb') as dataIn2:
+                        readData2 = list(struct.unpack(unpack_char2 + 'h' * (size2/2), dataIn2.read(size2)))
+                #print 'Actual data2 out:     ', readData2
+                self.assertEqual(expectedData2, readData2)
+                
+        except self.failureException as e:
+            comp.releaseObject()
+            source.releaseObject()
+            os.remove(dataFileIn)
+            if os.path.exists(dataFileOut):
+                os.remove(dataFileOut)
+            if os.path.exists(expectedDataFileOut):
+                os.remove(expectedDataFileOut)
+            if os.path.exists(expectedDataFileOut2):
+                os.remove(expectedDataFileOut2)
+            raise e
+
+        #Release the components and remove the generated files
+        comp.releaseObject()
+        source.releaseObject()
+        os.remove(dataFileIn)
+        if os.path.exists(dataFileOut):
+            os.remove(dataFileOut)
+        if os.path.exists(expectedDataFileOut):
+            os.remove(expectedDataFileOut)
+        if os.path.exists(expectedDataFileOut2):
+            os.remove(expectedDataFileOut2)
 
         print "........ PASSED\n"
         return
