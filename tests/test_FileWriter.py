@@ -1884,10 +1884,10 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         os.remove(seconddataFileOut)
         os.remove(dataFileOut)
 
-    def testMetaDataFileNoncontinguous(self):
+    def testMetaDataFileNoncontiguous(self):
         self.metaDataFileTests(contiguous=False)
 
-    def testMetaDataFileContinguous(self):
+    def testMetaDataFileContiguous(self):
         self.metaDataFileTests(contiguous=True)
 
     def metaDataFileTests(self, contiguous):
@@ -1967,7 +1967,7 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
                                   keywords=kws)
         # Push SRI
         port.pushSRI(sri1)
-        timestamp = createTs(timestamp.twsec+gap, timestamp.tfsec+len(data)*sri1.xdelta)
+        timestamp = createTs(timestamp.twsec+gap, timestamp.tfsec+len(data2)*sri1.xdelta)
         port.pushPacket(data2, timestamp, True, "test_streamID")
         timecode_sent.append(timestamp)
         time.sleep(1)
