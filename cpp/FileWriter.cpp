@@ -637,10 +637,11 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
 
             long maxSize_time_size = maxSize;
             if (advanced_properties.max_file_time > 0) {
-                // seconds                    *    samples/second     * B/sample
-                long maxSize_time = advanced_properties.max_file_time * 1 / packet->SRI.xdelta * sizeof (packet->dataBuffer[0]) * (packet->SRI.mode + 1);
+                // (seconds/file * Bytes/atom * atoms/sample) / (seconds/sample) = Bytes/file
+                double maxSize_time = (advanced_properties.max_file_time * sizeof(packet->dataBuffer[0]) * (packet->SRI.mode + 1)) / packet->SRI.xdelta;
                 if (maxSize_time > 0 && (maxSize_time_size <= 0 || maxSize_time < maxSize_time_size))
-                    maxSize_time_size = maxSize_time;
+                    maxSize_time_size = (long) maxSize_time;
+                LOG_DEBUG(FileWriter_i,"maxSize_time_size:"<<maxSize_time_size<<std::fixed<<std::setprecision(17)<<"  maxSize_time:"<<maxSize_time);
 
             }
 
