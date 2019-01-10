@@ -1885,6 +1885,46 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         os.remove(seconddataFileOut)
         os.remove(dataFileOut)
 
+    def testMetaDataAppendCombo(self):
+        # Setup FileWriter
+        comp = sb.launch('../FileWriter.spd.xml')
+        config_exception = None
+        props = props_from_dict({'advanced_properties':{'advanced_properties::enable_metadata_file':True, 'advanced_properties::existing_file':'APPEND'}})
+        try:
+            comp.configure(props)
+        except Exception as e:
+            config_exception = e
+
+        self.assertNotEqual(config_exception, None, msg="InvalidConfiguration exception not thrown for invalid advanced properties")
+        self.assertEqual(type(config_exception).__name__, 'InvalidConfiguration', msg="Exception thrown is incorrect type")
+        self.assertTrue('APPEND' in config_exception.msg, msg="InvalidConfiguration exception has incorrect message")
+        self.assertTrue(not comp.advanced_properties.enable_metadata_file and comp.advanced_properties.existing_file != 'APPEND',msg="Invalid configuration of advanced properties permitted")
+
+        config_exception = None
+        comp.advanced_properties.enable_metadata_file=True
+        try:
+            comp.advanced_properties.existing_file = 'APPEND'
+        except Exception as e:
+            config_exception = e
+
+        self.assertNotEqual(config_exception, None, msg="InvalidConfiguration exception not thrown for invalid advanced properties")
+        self.assertEqual(type(config_exception).__name__, 'InvalidConfiguration', msg="Exception thrown is incorrect type")
+        self.assertTrue('APPEND' in config_exception.msg, msg="InvalidConfiguration exception has incorrect message")
+        self.assertTrue(comp.advanced_properties.enable_metadata_file and comp.advanced_properties.existing_file != 'APPEND',msg="Invalid configuration of advanced properties permitted")
+
+        config_exception = None
+        comp.advanced_properties.enable_metadata_file=False
+        comp.advanced_properties.existing_file = 'APPEND'
+        try:
+            comp.advanced_properties.enable_metadata_file=True
+        except Exception as e:
+            config_exception = e
+
+        self.assertNotEqual(config_exception, None, msg="InvalidConfiguration exception not thrown for invalid advanced properties")
+        self.assertEqual(type(config_exception).__name__, 'InvalidConfiguration', msg="Exception thrown is incorrect type")
+        self.assertTrue('APPEND' in config_exception.msg, msg="InvalidConfiguration exception has incorrect message")
+        self.assertTrue(not comp.advanced_properties.enable_metadata_file and comp.advanced_properties.existing_file == 'APPEND',msg="Invalid configuration of advanced properties permitted")
+
     def testMetaDataFileNoncontiguous(self):
         self.metaDataFileTests(contiguous=False)
 

@@ -204,6 +204,7 @@ void FileWriter_i::advanced_propertiesChanged(const advanced_properties_struct &
         LOG_WARN(FileWriter_i, "APPEND mode for existing files and meta data file mode enabled are incompatible settings.");
         advanced_properties.enable_metadata_file = oldValue.enable_metadata_file;
         advanced_properties.existing_file = oldValue.existing_file;
+        throw CF::PropertySet::InvalidConfiguration("APPEND mode for existing files and meta data file mode enabled are incompatible settings.", CF::Properties());
     }
 }
 
