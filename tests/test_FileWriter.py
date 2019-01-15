@@ -1895,9 +1895,14 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         except Exception as e:
             config_exception = e
 
+        # Only verify exception message in RH2.2+ because previous versions hide the exception message
+        from distutils.version import StrictVersion
+        from ossie import __version__ as rh_version
+        test_message = StrictVersion(rh_version) >= StrictVersion('2.2')
+
         self.assertNotEqual(config_exception, None, msg="InvalidConfiguration exception not thrown for invalid advanced properties")
         self.assertEqual(type(config_exception).__name__, 'InvalidConfiguration', msg="Exception thrown is incorrect type")
-        self.assertTrue('APPEND' in config_exception.msg, msg="InvalidConfiguration exception has incorrect message")
+        if test_message: self.assertTrue('APPEND' in config_exception.msg, msg="InvalidConfiguration exception has incorrect message")
         self.assertTrue(not comp.advanced_properties.enable_metadata_file and comp.advanced_properties.existing_file != 'APPEND',msg="Invalid configuration of advanced properties permitted")
 
         config_exception = None
@@ -1909,7 +1914,7 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
 
         self.assertNotEqual(config_exception, None, msg="InvalidConfiguration exception not thrown for invalid advanced properties")
         self.assertEqual(type(config_exception).__name__, 'InvalidConfiguration', msg="Exception thrown is incorrect type")
-        self.assertTrue('APPEND' in config_exception.msg, msg="InvalidConfiguration exception has incorrect message")
+        if test_message: self.assertTrue('APPEND' in config_exception.msg, msg="InvalidConfiguration exception has incorrect message")
         self.assertTrue(comp.advanced_properties.enable_metadata_file and comp.advanced_properties.existing_file != 'APPEND',msg="Invalid configuration of advanced properties permitted")
 
         config_exception = None
@@ -1922,7 +1927,7 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
 
         self.assertNotEqual(config_exception, None, msg="InvalidConfiguration exception not thrown for invalid advanced properties")
         self.assertEqual(type(config_exception).__name__, 'InvalidConfiguration', msg="Exception thrown is incorrect type")
-        self.assertTrue('APPEND' in config_exception.msg, msg="InvalidConfiguration exception has incorrect message")
+        if test_message: self.assertTrue('APPEND' in config_exception.msg, msg="InvalidConfiguration exception has incorrect message")
         self.assertTrue(not comp.advanced_properties.enable_metadata_file and comp.advanced_properties.existing_file == 'APPEND',msg="Invalid configuration of advanced properties permitted")
 
     def testMetaDataFileNoncontiguous(self):
@@ -2359,7 +2364,7 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
 
         #This test scenario should create two files with associated metadata files.
         #The first should have an initial sri then three pushpackets with 1000 elements each.
-        #The second files should have an initial sri, then one pushpacket with 1500 elements, then a new SRI, and then the last pushpacket
+        #The second files should have an initial sri, then one pushpacket with 1500 elements
 
 
         # Parse first metadata file and check it
