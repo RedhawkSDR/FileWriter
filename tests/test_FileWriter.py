@@ -1930,17 +1930,52 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         if test_message: self.assertTrue('APPEND' in config_exception.msg, msg="InvalidConfiguration exception has incorrect message")
         self.assertTrue(not comp.advanced_properties.enable_metadata_file and comp.advanced_properties.existing_file == 'APPEND',msg="Invalid configuration of advanced properties permitted")
 
-    def testMetaDataFileNoncontiguous(self):
-        self.metaDataFileTests(contiguous=False)
+    def testMetaDataFileNoncontiguousExact(self):
+        ''' Exact: all packet sizes are less than max file size and max file
+            size is a multiple of the packet size. Result is that the output
+            file size will reach the exact max file size before the start of
+            a new file.
+            Noncontiguous: There is at least one gap in time between packets.
+        '''
+        self.metaDataFileTests(contiguous=False, exact=True)
 
-    def testMetaDataFileContiguous(self):
-        self.metaDataFileTests(contiguous=True)
+    def testMetaDataFileNoncontiguousNotExact(self):
+        ''' NotExact: all packet sizes are less than max file size and max file
+            size is NOT a multiple of the packet size. Result is that the
+            output file size will NOT reach the exact max file size before the
+            start of a new file.
+            Noncontiguous: There is at least one gap in time between packets.
+        '''
+        self.metaDataFileTests(contiguous=False, exact=False)
 
-    def metaDataFileTests(self, contiguous):
+    def testMetaDataFileContiguousExact(self):
+        ''' Exact: all packet sizes are less than max file size and max file
+            size is a multiple of the packet size. Result is that the output
+            file size will reach the exact max file size before the start of
+            a new file.
+            Contiguous: There are no gaps in time between packets.
+        '''
+        self.metaDataFileTests(contiguous=True, exact=True)
+
+    def testMetaDataFileContiguousNotExact(self):
+        ''' NotExact: all packet sizes are less than max file size and max file
+            size is NOT a multiple of the packet size. Result is that the
+            output file size will NOT reach the exact max file size before the
+            start of a new file.
+            Contiguous: There are no gaps in time between packets.
+        '''
+        self.metaDataFileTests(contiguous=True, exact=False)
+
+    def metaDataFileTests(self, contiguous, exact=True):
 
         gap = 0.0
         if not contiguous:
             gap = 5.0
+            
+        max_size = 6000
+        if not exact:
+            max_size = 6012
+        
 
         dataFileOut = './testdata.out'
         seconddataFileOut = dataFileOut+'-1'
@@ -1957,7 +1992,7 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
 
         #comp.file_format = 'BLUEFILE'
 
-        comp.advanced_properties.max_file_size = "6000"
+        comp.advanced_properties.max_file_size = "%s"%(max_size)
         port = comp.getPort('dataShort_in')
         comp.start()
 
@@ -2110,10 +2145,15 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
 
         #Read in Data from Test File as Short
         size = os.path.getsize(dataFileOut)
+        if exact:
+            self.assertEqual(size,max_size, msg="Size of first file is not exactly equal to max_size")
+        else:
+            self.assertTrue(size < max_size, msg="Size of first file is not less than max_size")
         with open (dataFileOut, 'rb') as dataIn:
             filedata = list(struct.unpack('h'*(size/2), dataIn.read(size)))
 
         size = os.path.getsize(seconddataFileOut)
+        self.assertTrue(size <= max_size, msg="Size of second file is not less than or equal to max_size")
         with open (seconddataFileOut, 'rb') as dataIn:
             filedata+= list(struct.unpack('h'*(size/2), dataIn.read(size)))
 
@@ -2302,7 +2342,23 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         os.remove(metadatafile)
         os.remove(secondmetadatafile)
 
-    def testMetaDataFileTimeMultipleFiles(self):
+    def testMetaDataFileTimeMultipleFilesExact(self):
+        ''' all packet durations are less than max file time and max file time
+            is a multiple of the packet duration. Result is that the output
+            file size will reach the exact max file time before the start of a
+            new file.
+        '''
+        self.metaDataFileTimeMultipleFiles(exact=True)
+
+    def testMetaDataFileTimeMultipleFilesNotExact(self):
+        ''' all packet durations are less than max file time and max file time
+            is NOT a multiple of the packet duration. Result is that the output
+            file size will NOT reach the exact max file time before the start
+            of a new file.
+        '''
+        self.metaDataFileTimeMultipleFiles(exact=False)
+
+    def metaDataFileTimeMultipleFiles(self, exact=True):
 
         dataFileOut = './testdata.out'
         seconddataFileOut = dataFileOut+'-1'
@@ -2326,7 +2382,7 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
 
         # Create an SRI with 2 keywords (1,2)
         kws = props_from_dict({'TEST_KW1':1111,'TEST_KW2':'2222'})
-        srate = 1e3
+        srate = 1e3 if exact else 1.1e3
         sri1 = BULKIO.StreamSRI(hversion=1,
                                   xstart=0,
                                   xdelta= 1.0/srate,
