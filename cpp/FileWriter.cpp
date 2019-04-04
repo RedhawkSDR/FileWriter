@@ -28,6 +28,7 @@
  **************************************************************************/
 
 #include "FileWriter.h"
+#include <boost/algorithm/string.hpp>
 
 PREPARE_LOGGING(FileWriter_i)
 
@@ -958,7 +959,9 @@ std::string FileWriter_i::sri_to_XMLstring(const BULKIO::StreamSRI& sri,const bo
     sri_string << "<ydelta>"   << sri.ydelta   << "</ydelta>";
     for (unsigned int i = 0; i < sri.keywords.length(); i++) {
         unsigned int typecode_name = sri.keywords[i].value.type()->kind();
-        sri_string << "<keyword id=\"" << sri.keywords[i].id << "\" type=\"" << typecode_name << "\">";
+        std::string id(sri.keywords[i].id);
+        boost::algorithm::trim(id);
+        sri_string << "<keyword id=\"" << id << "\" type=\"" << typecode_name << "\">";
 
         CORBA::Float tmpFloat;
         CORBA::Double tmpDouble;
@@ -1083,6 +1086,7 @@ std::pair<blue::HeaderControlBlock, std::vector<char> > FileWriter_i::createBlue
     std::set<blue::Keyword> midasKeywords;
     for (int i = 0; i < (int) sri.keywords.length(); ++i) {
         std::string id = std::string(sri.keywords[i].id);
+        boost::algorithm::trim(id);
         if (id == "")
             continue;
         CORBA::TCKind val_kind = sri.keywords[i].value.type()->kind();

@@ -1776,6 +1776,90 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         os.remove(dataFileOut2)
         os.remove(dataFileOut)
 
+
+    def testBlueFileKeywordsWithSpaces(self):
+
+        dataFileOut = './testdata.out'
+
+        # Setup FileWriter
+        comp = sb.launch('../FileWriter.spd.xml')
+        comp.destination_uri = dataFileOut
+
+        comp.file_format = 'BLUEFILE'
+        comp.advanced_properties.use_hidden_files = False
+        port = comp.getPort('dataShort_in')
+        comp.start()
+
+        # Create an SRI with 2 keywords (a,b)
+        kws = props_from_dict({'TEST_KW1 ':1111,'TEST_KW2 ':'2222'})
+        srate = 10.0e6
+        sri1 = BULKIO.StreamSRI(hversion=1,
+                                  xstart=0,
+                                  xdelta= 1.0/srate,
+                                  xunits=1,
+                                  subsize=0,
+                                  ystart=0.0,
+                                  ydelta=0,
+                                  yunits=1,
+                                  mode=0,
+                                  streamID="test_streamID",
+                                  blocking=False,
+                                  keywords=kws)
+        data = range(1000)
+
+        # Push SRI
+        port.pushSRI(sri1)
+        #Push packet of data
+        port.pushPacket(data, createTs(), False, "test_streamID")
+        port.pushPacket(data, createTs(), False, "test_streamID")
+        port.pushPacket(data, createTs(), False, "test_streamID")
+
+        # Create an SRI with 2 keywords (1 same as above with new value (a'), 1 new keyword(c))
+        kws = props_from_dict({'TEST_KW1 ':0,'TEST_KW3 ':'3333'})
+
+        sri2 = BULKIO.StreamSRI(hversion=1,
+                                  xstart=0,
+                                  xdelta= 1/srate,
+                                  xunits=1,
+                                  subsize=0,
+                                  ystart=0.0,
+                                  ydelta=0,
+                                  yunits=1,
+                                  mode=0,
+                                  streamID="test_streamID",
+                                  blocking=False,
+                                  keywords=kws)
+        # Push SRI
+        port.pushSRI(sri2)
+
+        #Push packet of data
+        port.pushPacket(data, createTs(), False, "test_streamID")
+        port.pushPacket(data, createTs(), False, "test_streamID")
+        #Push packet of data with EOS
+        port.pushPacket(data, createTs(), True, "test_streamID")
+
+        time.sleep(1)
+
+        #Open up bluefile
+        self.assertEqual(os.path.exists(dataFileOut), True, msg='Output file does not exist on filesystem')
+
+        header, data = bluefile.read(dataFileOut,ext_header_type=dict)
+
+        keywords = header['ext_header'].copy()
+        keywords.update(header['keywords'])
+
+        self.assertTrue('TEST_KW1' in keywords,msg="Keyword 1 missing")
+        self.assertEqual(keywords['TEST_KW1'],0,msg="Keyword 1 has wrong value")
+
+        self.assertTrue('TEST_KW2' in keywords,msg="Keyword 2 missing")
+        self.assertEqual(keywords['TEST_KW2'],'2222',msg="Keyword 2 has wrong value")
+
+        self.assertTrue('TEST_KW3' in keywords,msg="Keyword 3 missing")
+        self.assertEqual(keywords['TEST_KW3'],'3333',msg="Keyword 3 has wrong value")
+
+        os.remove(dataFileOut)
+
+
     def testBlueFileKeywordsMultipleFiles(self):
 
         dataFileOut = './testdata.out'
@@ -2341,6 +2425,117 @@ class ResourceTests(ossie.utils.testing.ScaComponentTestCase):
         os.remove(seconddataFileOut)
         os.remove(metadatafile)
         os.remove(secondmetadatafile)
+
+
+    def testMetaDataFileKeywordsSpaces(self):
+
+        dataFileOut = './testdata.out'
+        metadatafile = dataFileOut +'.metadata.xml'
+
+        # Setup FileWriter
+        comp = sb.launch('../FileWriter.spd.xml')
+        comp.destination_uri = dataFileOut
+        print " Hootie ", dataFileOut
+
+        comp.advanced_properties.enable_metadata_file=True
+        comp.advanced_properties.use_hidden_files = False
+
+        port = comp.getPort('dataShort_in')
+        comp.start()
+
+        # Create an SRI with 2 keywords (1,2)
+        kws = props_from_dict({'TEST_KW1 ':1111,'TEST_KW2 ':'2222'})
+        srate = 10.0e6
+        sri1 = BULKIO.StreamSRI(hversion=1,
+                                  xstart=0,
+                                  xdelta= 1.0/srate,
+                                  xunits=1,
+                                  subsize=0,
+                                  ystart=0.0,
+                                  ydelta=0,
+                                  yunits=1,
+                                  mode=0,
+                                  streamID="test_streamID",
+                                  blocking=False,
+                                  keywords=kws)
+        data = range(1000)
+        data2 = range(1500)
+
+        # Push SRI
+        port.pushSRI(sri1)
+        #Push packet of data
+        timecode_sent = []
+        timestamp = createTs() # same as bulkio.timestamp.now()
+        port.pushPacket(data, timestamp, False, "test_streamID")
+        timecode_sent.append(timestamp)
+        timestamp = createTs()
+        port.pushPacket(data, timestamp, False, "test_streamID")
+        timecode_sent.append(timestamp)
+        timestamp = createTs()
+        port.pushPacket(data, timestamp, False, "test_streamID")
+        timecode_sent.append(timestamp)
+
+
+        # Create an SRI with a changed keyword
+        kws = props_from_dict({'TEST_KW5 ':5555,'TEST_KW2 ':'2222'})
+        srate = 10.0e6
+        sri1 = BULKIO.StreamSRI(hversion=1,
+                                  xstart=0,
+                                  xdelta= (1.0/srate),
+                                  xunits=1,
+                                  subsize=0,
+                                  ystart=0.0,
+                                  ydelta=0,
+                                  yunits=1,
+                                  mode=0,
+                                  streamID="test_streamID",
+                                  blocking=False,
+                                  keywords=kws)
+        # Push SRI
+        port.pushSRI(sri1)
+        timestamp = createTs()
+        port.pushPacket(data2, timestamp, False, "test_streamID")
+        timecode_sent.append(timestamp)
+        timestamp = createTs()
+        port.pushPacket(data2, timestamp, True, "test_streamID")
+        timecode_sent.append(timestamp)
+        time.sleep(1)
+
+        #This test scenario should create one file with a metadata files with 2 SRI records
+
+        # Parse first metadata file and check it
+        firstmetadataxml = minidom.parse(metadatafile)
+
+        sricount = 0
+        for node in firstmetadataxml.getElementsByTagName('sri'):
+            sricount+=1
+            self.assertEqual(node.attributes['new'].value,"true", "SRI New Attribute has wrong value")
+            self.assertEqual(node.getElementsByTagName('streamID')[0].childNodes[0].data,"test_streamID")
+            self.assertAlmostEqual(float(node.getElementsByTagName('xdelta')[0].childNodes[0].data),(1.0/srate))
+            self.assertEqual(int(node.getElementsByTagName('hversion')[0].childNodes[0].data),1)
+            self.assertAlmostEqual(float(node.getElementsByTagName('xstart')[0].childNodes[0].data),0.0)
+            self.assertEqual(int(node.getElementsByTagName('xunits')[0].childNodes[0].data),1)
+            self.assertEqual(int(node.getElementsByTagName('subsize')[0].childNodes[0].data),0)
+            self.assertAlmostEqual(float(node.getElementsByTagName('ydelta')[0].childNodes[0].data),0.0)
+            self.assertAlmostEqual(float(node.getElementsByTagName('ystart')[0].childNodes[0].data),0.0)
+            self.assertEqual(int(node.getElementsByTagName('yunits')[0].childNodes[0].data),1)
+            self.assertEqual(int(node.getElementsByTagName('mode')[0].childNodes[0].data),0)
+            keywords = {}
+            for keyword in node.getElementsByTagName('keyword'):
+                keywords[keyword.attributes['id'].value] = keyword.childNodes[0].data
+
+            if sricount==1:
+                self.assertTrue("TEST_KW1" in keywords)
+                self.assertTrue("TEST_KW2" in keywords)
+            if sricount==2:
+                self.assertTrue("TEST_KW5" in keywords)
+                self.assertTrue("TEST_KW2" in keywords)
+
+        self.assertEqual(sricount, 2, "Received wrong number of sri in metadata")
+
+        os.remove(dataFileOut)
+        os.remove(metadatafile)
+
 
     def testMetaDataFileTimeMultipleFilesExact(self):
         ''' all packet durations are less than max file time and max file time
