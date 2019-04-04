@@ -55,6 +55,10 @@ class FileWriter_base : public Component, protected ThreadedComponent
         bool swap_bytes;
         /// Property: recording_enabled
         bool recording_enabled;
+        /// Property: input_bulkio_byte_order
+        std::string input_bulkio_byte_order;
+        /// Property: host_byte_order
+        std::string host_byte_order;
         /// Property: advanced_properties
         advanced_properties_struct advanced_properties;
         /// Message structure definition for file_io_message

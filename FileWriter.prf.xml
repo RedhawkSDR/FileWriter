@@ -21,23 +21,42 @@
 <!DOCTYPE properties PUBLIC "-//JTRS//DTD SCA V2.2.2 PRF//EN" "properties.dtd">
 <properties>
   <simple id="destination_uri" mode="readwrite" name="destination_uri" type="string">
-    <description>The path to the file to be written.
+    <description>Affects new files only. The path to the file to be written.
 
 URI accepted prefixes:
 file://	Local Filesystem
-sca:// 	SCA Filesystem (path relative to SDRROOT/dom)</description>
+sca:// 	SCA Filesystem (path relative to SDRROOT/dom)
+
+There are several key words that can be used to insert stream- or data-specific information into the file name. Some common examples are below; see the README.md for additional options.
+%STREAMID%    The stream ID
+%TIMESTAMP%  The timestamp of the first sample of the file
+%MODE%           The mode (Scalar or Complex)
+%SR%                 The sample rate
+%DT%                 The data type and format (described below)
+
+The data format tag is based on the BulkIO input port and the byte order of the data. The byte order is determined used the input_bulkio_byte_order and swap_bytes properties.
+8t    Char or XML input; Big or Little Endian
+8o    Octet input; Big or Little Endian
+16t   Short input; Big Endian
+16tr  Short input; Little Endian
+16o   Unsigned Short input; Big Endian
+16or  Unsigned Short input; Little Endian
+32f    32-bit Float input; Big Endian
+32fr   32-bit Float input; Little Endian
+64f    64-bit Double input; Big Endian
+64fr   64-bit Double input; Little Endian</description>
     <value>sca:///data/%STREAMID%.%TIMESTAMP%.%MODE%.%SR%.%DT%</value>
     <kind kindtype="property"/>
     <action type="external"/>
   </simple>
   <simple id="destination_uri_suffix" mode="readwrite" name="destination_uri_suffix" type="string">
-    <description>An optional prefix to be appended to the destination_uri.</description>
+    <description>Affects new files only. An optional suffix to be appended to the destination_uri.</description>
     <value></value>
     <kind kindtype="property"/>
     <action type="external"/>
   </simple>
   <simple id="file_format" mode="readwrite" name="file_format" type="string">
-    <description>The format of the data to be written to the file.</description>
+    <description>Affects new files only. The format of the data to be written to the file.</description>
     <value>RAW</value>
     <enumerations>
       <enumeration label="BLUE/PLATINUM FILE" value="BLUEFILE"/>
@@ -47,7 +66,7 @@ sca:// 	SCA Filesystem (path relative to SDRROOT/dom)</description>
     <action type="external"/>
   </simple>
   <simple id="swap_bytes" mode="readwrite" name="swap_bytes" type="boolean">
-    <description>When true, the endianness of the data will be switched from the local machine's representation.  For example, on an x86 machine, the native endianness is little, so enabling this would cause big-endian data to be written.  However on an ARM machine, the native endianness can be either little or big, and the interpretation of this property could change.</description>
+    <description>Changes only take affect when no streams are active and no files are open. When true, the endianness of the incoming BulkIO data will be switched from the representation indicated by the input_bulkio_byte_order property by swapping the byte order of the data before the data is written to file. This will affect the data format indicator string included in the file name when using the %DT% string replacement. For example, if input_bulkio_byte_order indicates Little Endian (or Host Byte Order on Little Endian hosts), enabling the swap_bytes property will cause Big Endian data to be written to file and the data format indicator string in the file name will indicate Big Endian as well.</description>
     <value>false</value>
     <kind kindtype="property"/>
     <action type="external"/>
@@ -86,7 +105,7 @@ GB (1024^3 Bytes)</description>
       <units>seconds</units>
     </simple>
     <simple id="advanced_properties::existing_file" mode="readwrite" name="existing_file" type="string">
-      <description>The behavior of the component in the case of the specified URI existing already.  </description>
+      <description>Affects new files only. The behavior of the component in the case of the specified URI existing already.  </description>
       <value>RENAME</value>
       <enumerations>
         <enumeration label="APPEND" value="APPEND"/>
@@ -96,11 +115,11 @@ GB (1024^3 Bytes)</description>
       </enumerations>
     </simple>
     <simple id="advanced_properties::create_destination_dir" mode="readwrite" name="create_destination_dir" type="boolean">
-      <description>When enabled, the destination directory specified by the URI will be created if it doesn't already exist, otherwise the data will be dropped.</description>
+      <description>Affects new files only. When enabled, the destination directory specified by the URI will be created if it doesn't already exist, otherwise the data will be dropped.</description>
       <value>true</value>
     </simple>
     <simple id="advanced_properties::enable_metadata_file" mode="readwrite" name="enable_metadata_file" type="boolean">
-      <description>When enabled, the SRI data will be written to an XML file.</description>
+      <description>Affects new files only. When enabled, the SRI data will be written to an XML file.</description>
       <value>false</value>
     </simple>
     <simple id="advanced_properties::reset_on_max_file" name="reset_on_max_file" type="boolean">
@@ -112,15 +131,15 @@ GB (1024^3 Bytes)</description>
       <value>true</value>
     </simple>
     <simple id="advanced_properties::use_hidden_files" mode="readwrite" name="use_hidden_files" type="boolean">
-      <description>When enabled, prepend a '.' to the URI basename to hide the file during writing.  This will be removed when the file is finished.</description>
+      <description>Affects new files only. When enabled, prepend a '.' to the URI basename to hide the file during writing.  This will be removed when the file is finished.</description>
       <value>true</value>
     </simple>
     <simple id="advanced_properties::open_file_extension" name="open_file_extension" type="string">
-      <description>An optional extension added to the URI basename of a file being written to presently.</description>
+      <description>Affects new files only. An optional extension added to the URI basename of a file being written to presently.</description>
       <value>inProgress</value>
     </simple>
     <simple id="advanced_properties::open_metadata_file_extension" name="open_metadata_file_extension" type="string">
-      <description>An optional extension added to the URI basename of a metadata file being written to presently.</description>
+      <description>Affects new files only. An optional extension added to the URI basename of a metadata file being written to presently.</description>
       <value>inProgress</value>
     </simple>
     <simple id="advanced_properties::use_tc_prec" name="use_tc_prec" type="boolean">
@@ -136,7 +155,7 @@ For example, given a timestamp with whole seconds and fractional seconds of ts_w
       <value>True</value>
     </simple>
     <simple id="advanced_properties::output_filename_case" name="output_filename_case" type="short">
-      <description>Letter case of output filename. Allow mixed case (0), force lower case (1), or force upper case (2). Default is to allow mixed case.
+      <description>Affects new files only. Letter case of output filename. Allow mixed case (0), force lower case (1), or force upper case (2). Default is to allow mixed case.
 
 Note: Changing this property will take affect on the next new file that is initiated, and will not affect any files that are in progress.</description>
       <value>0</value>
@@ -197,4 +216,24 @@ Note: Changing this property will take affect on the next new file that is initi
     </simple>
     <configurationkind kindtype="property"/>
   </struct>
+  <simple id="input_bulkio_byte_order" mode="readwrite" name="input_bulkio_byte_order" type="string">
+    <description>Changes only take affect when no streams are active and no files are open. Specifies the byte order (endianness) of the incoming BulkIO data. By default, the incoming data will be treated as the endianness of the host system (Host Byte Order). If it is known that the incoming data is of a byte order different than the host, Big or Little Endian may be chosen. Host Byte Order should almost always be used because byte order is converted between hosts by CORBA automatically when necessary. This property, along with the swap_bytes property, will determine the data format indicator string included in the file name when %DT% string replacement is used.</description>
+    <value>host_order</value>
+    <enumerations>
+      <enumeration label="Host Byte Order" value="host_order"/>
+      <enumeration label="Little Endian" value="little_endian"/>
+      <enumeration label="Big Endian" value="big_endian"/>
+    </enumerations>
+    <kind kindtype="property"/>
+    <action type="external"/>
+  </simple>
+  <simple id="host_byte_order" mode="readonly" name="host_byte_order" type="string">
+    <description>The native byte order (endianness) of the host system.</description>
+    <enumerations>
+      <enumeration label="Little Endian" value="little_endian"/>
+      <enumeration label="Big Endian" value="big_endian"/>
+    </enumerations>
+    <kind kindtype="property"/>
+    <action type="external"/>
+  </simple>
 </properties>

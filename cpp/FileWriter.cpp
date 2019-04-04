@@ -39,6 +39,7 @@ FileWriter_base(uuid, label) {
     addPropertyListener(file_format, this, &FileWriter_i::file_formatChanged);
     addPropertyListener(advanced_properties, this, &FileWriter_i::advanced_propertiesChanged);
     addPropertyListener(recording_timer, this, &FileWriter_i::recording_timerChanged);
+    addPropertyListener(input_bulkio_byte_order, this, &FileWriter_i::input_bulkio_byte_orderChanged);
 }
 
 FileWriter_i::~FileWriter_i() {
@@ -57,6 +58,31 @@ void FileWriter_i::constructor() {
         current_writer_type = RAW;
     maxSize = sizeString_to_longBytes(advanced_properties.max_file_size);
     change_uri();
+
+    // Determine host byte order
+    switch(BYTE_ORDER) {
+    case LITTLE_ENDIAN:
+        host_byte_order = "little_endian";
+        break;
+    case BIG_ENDIAN:
+        host_byte_order = "big_endian";
+        break;
+    default:
+        host_byte_order = "little_endian";
+        LOG_ERROR(FileWriter_i,"Could not determine host byte order ["<<BYTE_ORDER<<"], defaulting to Little Endian");
+    }
+
+    // Store prop in variable that only updates when no active streams or open files
+    PERFORM_BYTE_SWAP = swap_bytes;
+
+    // Determine BulkIO input byte order - this variable also only updates when no active streams or open files
+    if (input_bulkio_byte_order == "little_endian") {
+        BULKIO_BYTE_ORDER = LITTLE_ENDIAN;
+    } else if (input_bulkio_byte_order == "big_endian") {
+        BULKIO_BYTE_ORDER = BIG_ENDIAN;
+    } else { // host_order
+        BULKIO_BYTE_ORDER = BYTE_ORDER;
+    }
 }
 
 void FileWriter_i::start() throw (CF::Resource::StartError, CORBA::SystemException) {
@@ -170,6 +196,16 @@ void FileWriter_i::advanced_propertiesChanged(const advanced_properties_struct &
     if (oldValue.max_file_size != newValue.max_file_size) {
         maxSize = sizeString_to_longBytes(newValue.max_file_size);
     }
+    if (newValue.enable_metadata_file && newValue.existing_file == "APPEND") {
+        // This is the only combo that absolutely won't work
+        // Log a warning and reset to the old values
+        // Note: setting to oldValue will have no affect if newValue was unchanged from oldValue
+        //       so don't waste time checking to see what's changed
+        LOG_WARN(FileWriter_i, "APPEND mode for existing files and meta data file mode enabled are incompatible settings.");
+        advanced_properties.enable_metadata_file = oldValue.enable_metadata_file;
+        advanced_properties.existing_file = oldValue.existing_file;
+        throw CF::PropertySet::InvalidConfiguration("APPEND mode for existing files and meta data file mode enabled are incompatible settings.", CF::Properties());
+    }
 }
 
 void FileWriter_i::recording_timerChanged(const std::vector<timer_struct_struct> &oldValue, const std::vector<timer_struct_struct> &newValue) {
@@ -191,6 +227,35 @@ void FileWriter_i::construct_recording_timer(const std::vector<timer_struct_stru
         timer_set.insert(timer_element);
     }
     timer_set_iter = timer_set.begin();
+}
+
+void FileWriter_i::input_bulkio_byte_orderChanged(std::string oldValue, std::string newValue) {
+    exclusive_lock lock(service_thread_lock);
+    if (oldValue != newValue) {
+        // Note: Do not update BULKIO_BYTE_ORDER -- done in singleService when no active streams/files
+        if (newValue == "little_endian") {
+            LOG_DEBUG(FileWriter_i,"input_bulkio_byte_order changed from "<<oldValue<<" to "<<newValue);
+            //BULKIO_BYTE_ORDER = LITTLE_ENDIAN;
+        } else if (newValue ==  "big_endian") {
+            LOG_DEBUG(FileWriter_i,"input_bulkio_byte_order changed from "<<oldValue<<" to "<<newValue);
+            //BULKIO_BYTE_ORDER = BIG_ENDIAN;
+        } else if (newValue == "host_order") {
+            LOG_DEBUG(FileWriter_i,"input_bulkio_byte_order changed from "<<oldValue<<" to "<<newValue);
+            //BULKIO_BYTE_ORDER = BYTE_ORDER;
+        } else {
+            LOG_ERROR(FileWriter_i,"Configured with invalid input_bulkio_byte_order value: "<<newValue<<"; Reverting back to previous value: "<<oldValue);
+            input_bulkio_byte_order = oldValue;
+        }
+    }
+}
+
+void FileWriter_i::swap_bytesChanged(bool oldValue, bool newValue) {
+    exclusive_lock lock(service_thread_lock);
+    if (oldValue != newValue) {
+        // Note: Do not update PERFORM_BYTE_SWAP -- done in singleService when no active streams/files
+        LOG_DEBUG(FileWriter_i,"swap_bytes value changed from "<<oldValue<<" to "<<newValue);
+        //PERFORM_BYTE_SWAP = swap_bytes;
+    }
 }
 
 /***********************************************************************************************
@@ -332,13 +397,13 @@ void FileWriter_i::construct_recording_timer(const std::vector<timer_struct_stru
 int FileWriter_i::serviceFunction() {
     exclusive_lock lock(service_thread_lock);
     // Service each port individually. Does not account for multiple ports connected at once
-    bool retService = singleService(dataChar_in, "8t");
-    retService = retService || singleService(dataOctet_in, "8o");
-    retService = retService || singleService(dataShort_in, "16tr");
-    retService = retService || singleService(dataUshort_in, "16or");
-    retService = retService || singleService(dataFloat_in, "32fr");
-    retService = retService || singleService(dataDouble_in, "64fr");
-    retService = retService || singleService(dataXML_in, "8t");
+    bool retService =          singleService(dataChar_in);
+    retService = retService || singleService(dataOctet_in);
+    retService = retService || singleService(dataShort_in);
+    retService = retService || singleService(dataUshort_in);
+    retService = retService || singleService(dataFloat_in);
+    retService = retService || singleService(dataDouble_in);
+    retService = retService || singleService(dataXML_in);
 
     if (retService) // If retService is true, then at least 1 packet was received and processed
         return NORMAL;
@@ -349,7 +414,19 @@ int FileWriter_i::serviceFunction() {
 /**
  * A templated service function that is generic between data types.
  */
-template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * dataIn, const std::string & dt) {
+template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * dataIn) {
+    if (stream_to_file_mapping.empty() && file_to_struct_mapping.empty()) {
+        // No active streams and no open files
+        // Update byte swap and determine BulkIO input byte order for new stream
+        PERFORM_BYTE_SWAP = swap_bytes;
+        if (input_bulkio_byte_order == "little_endian") {
+            BULKIO_BYTE_ORDER = LITTLE_ENDIAN;
+        } else if (input_bulkio_byte_order == "big_endian") {
+            BULKIO_BYTE_ORDER = BIG_ENDIAN;
+        } else { // host_order
+            BULKIO_BYTE_ORDER = BYTE_ORDER;
+        }
+    }
     typename IN_PORT_TYPE::dataTransfer *packet = dataIn->getPacket(0);
     if (packet == NULL)
         return false;
@@ -447,16 +524,16 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
     }
 
     // BYTE SWAP
-    if (swap_bytes) {
-        if (dt.find("16") != std::string::npos) {
+    if (PERFORM_BYTE_SWAP) {
+        if (sizeof(packet->dataBuffer[0]) == sizeof(uint16_t)) {
             LOG_DEBUG(FileWriter_i, "SWAP_BYTES - swapping 16");
             std::vector<uint16_t> *svp = (std::vector<uint16_t> *) & packet->dataBuffer;
             std::transform(svp->begin(), svp->end(), svp->begin(), Byte_Swap16<uint16_t>);
-        } else if (dt.find("32") != std::string::npos) {
+        } else if (sizeof(packet->dataBuffer[0]) == sizeof(uint32_t)) {
             LOG_DEBUG(FileWriter_i, "SWAP_BYTES - swapping 32");
             std::vector<uint32_t> *svp = (std::vector<uint32_t> *) & packet->dataBuffer;
             std::transform(svp->begin(), svp->end(), svp->begin(), Byte_Swap32<uint32_t>);
-        } else if (dt.find("64") != std::string::npos) {
+        } else if (sizeof(packet->dataBuffer[0]) == sizeof(uint64_t)) {
             LOG_DEBUG(FileWriter_i, "SWAP_BYTES - swapping 64");
             std::vector<uint64_t> *svp = (std::vector<uint64_t> *) & packet->dataBuffer;
             std::transform(svp->begin(), svp->end(), svp->begin(), Byte_Swap64<uint64_t>);
@@ -468,7 +545,7 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
             // Is File New
             bool new_file = destination_filename.empty();
             if (new_file) {
-                std::string basename = stream_to_basename(stream_id, packet->SRI, packet->T, file_format, dt);
+                std::string basename = stream_to_basename<IN_PORT_TYPE>(stream_id, packet->SRI, packet->T, file_format);
                 destination_filename = prop_dirname + basename;
                 bool append = false;
                 // Unless the file is appending, do something if the file already exists
@@ -489,9 +566,15 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
                         } while (filesystem.exists(tmpFN) && counter <= 1024);
                         destination_filename = tmpFN;
                         if (filesystem.exists(destination_filename))
-                            throw std::logic_error("Cannot rename file to an available name. Dropping Reset of Packet!");
+                            throw std::logic_error("Cannot rename file to an available name. Dropping Rest of Packet!");
                     } else if (existing_file == "APPEND") {
-                        append = true;
+                        // Cannot append if metadata file mode is enabled
+                        if (advanced_properties.enable_metadata_file) {
+                            LOG_ERROR(FileWriter_i,"APPEND mode for existing files and meta data file mode enabled are incompatible settings. Dropping Packet!");
+                            throw std::logic_error("APPEND mode for existing files and meta data file mode enabled are incompatible settings. Dropping Packet!");
+                        } else {
+                            append = true;
+                        }
                     }
                 }
 
@@ -514,8 +597,8 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
                     curFileDescIter->second.file_size_internal = filesystem.file_size(curFileDescIter->second.in_process_uri_filename);
 
                     bool open_success = filesystem.open_file(curFileDescIter->second.in_process_uri_filename, true, append);
-                    if (curFileDescIter->second.metdata_file_enabled())
-                        open_success |= filesystem.open_file(curFileDescIter->second.in_process_uri_metadata_filename, true, append);
+                    if (open_success && curFileDescIter->second.metdata_file_enabled())
+                        open_success = filesystem.open_file(curFileDescIter->second.in_process_uri_metadata_filename, true, append);
                     if (!open_success) {
                         close_file(destination_filename, packet->T, stream_id);
                         stream_to_file_mapping.erase(stream_id);
@@ -536,8 +619,10 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
 
                     // Initialize Metadata File
                     if (curFileDescIter->second.metdata_file_enabled()){
-                        std::string openXML = "<FileWriter_metadata>";
-                        filesystem.write(curFileDescIter->second.in_process_uri_metadata_filename, &openXML, advanced_properties.force_flush);
+                        std::ostringstream openXML;
+                        openXML << "<FileWriter_metadata datafile=\""<< curFileDescIter->second.basename<<"\">";
+                        std::string openXML_str = openXML.str();
+                        filesystem.write(curFileDescIter->second.in_process_uri_metadata_filename, &openXML_str, advanced_properties.force_flush);
                     }
 
                     // BLUEFILE
@@ -578,20 +663,50 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
 
             long maxSize_time_size = maxSize;
             if (advanced_properties.max_file_time > 0) {
-                // seconds                    *    samples/second     * B/sample
-                long maxSize_time = advanced_properties.max_file_time * 1 / packet->SRI.xdelta * sizeof (packet->dataBuffer[0]) * (packet->SRI.mode + 1);
+                // (seconds/file * Bytes/atom * atoms/sample) / (seconds/sample) = Bytes/file
+                double maxSize_time = (advanced_properties.max_file_time * sizeof(packet->dataBuffer[0]) * (packet->SRI.mode + 1)) / packet->SRI.xdelta;
                 if (maxSize_time > 0 && (maxSize_time_size <= 0 || maxSize_time < maxSize_time_size))
-                    maxSize_time_size = maxSize_time;
+                    maxSize_time_size = (long) maxSize_time;
+                LOG_DEBUG(FileWriter_i,"maxSize_time_size:"<<maxSize_time_size<<std::fixed<<std::setprecision(17)<<"  maxSize_time:"<<maxSize_time);
 
             }
 
             bool reached_max_size = false;
             if (maxSize_time_size > 0) {
                 size_t avail_in_file = maxSize_time_size - curFileDescIter->second.file_size_internal;
-                if (avail_in_file <= write_bytes) {
-                    write_bytes = avail_in_file;
+                if (avail_in_file == write_bytes) {
                     reached_max_size = true;
-                    LOG_DEBUG(FileWriter_i, "Reached max file size: write_bytes="<<write_bytes);
+                    LOG_DEBUG(FileWriter_i, "Reached max file size exactly: write_bytes="<<write_bytes);
+                } else if (avail_in_file < write_bytes) {
+                    LOG_DEBUG(FileWriter_i, "Reached max file size: avail_in_file="<<avail_in_file<<"  write_bytes="<<write_bytes);
+                    if (curFileDescIter->second.metdata_file_enabled()) {
+                        // When writing metadata, do not split packets
+                        // If this is a new (empty) file, write the full packet with a warning
+                        // Otherwise, close this file and write packet to a new file
+                        if (new_file) { // write_bytes > maxSize_time_size) {
+                            LOG_WARN(FileWriter_i, "Packet size exceeds max file size by "<<write_bytes-maxSize_time_size);
+                            LOG_WARN(FileWriter_i, "In metadata mode, cannot split packet, exceeding max file size by "<<write_bytes-avail_in_file);
+                        } else {
+                            // set write_bytes to 0 and put entire packet in next file
+                            LOG_DEBUG(FileWriter_i, "In metadata mode and cannot fit full packet, closing file "<<avail_in_file<<" Bytes less than max.");
+                            close_file(destination_filename, packet->T, stream_id);
+                            if (advanced_properties.reset_on_max_file) {
+                                LOG_DEBUG(FileWriter_i, "Reseting on max file size...");
+                                stream_to_file_mapping.erase(stream_id);
+                                curFileIter = stream_to_file_mapping.end();
+                                destination_filename.clear();
+                                continue;
+                            } else {
+                                LOG_DEBUG(FileWriter_i, "Not reseting on max file size...");
+                                break;
+                            }
+                        }
+                    } else {
+                        // otherwise, fill to the max and put the rest in a new file
+                        write_bytes = avail_in_file;
+                    }
+                    LOG_DEBUG(FileWriter_i, "Reached max file size. Writing: ="<<write_bytes);
+                    reached_max_size = true;
                 }
             }
 
@@ -611,25 +726,26 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
                 packet->SRI.streamID = stream_id.c_str();
                 dataFile_out->pushSRI(packet->SRI);
                 if (curFileDescIter->second.metdata_file_enabled()) {
-                    std::string metadata = sri_to_XMLstring(packet->SRI);
+                    std::string metadata = sri_to_XMLstring(packet->SRI,packet->sriChanged);
                     filesystem.write(curFileDescIter->second.in_process_uri_metadata_filename, &metadata, advanced_properties.force_flush);
                 }
                 if (curFileDescIter->second.file_type == BLUEFILE) {
-                	mergeKeywords(curFileDescIter->second.lastSRI.keywords);
-                	curFileDescIter->second.lastSRI.keywords = allKeywords;
+                    mergeKeywords(curFileDescIter->second.lastSRI.keywords);
+                    curFileDescIter->second.lastSRI.keywords = allKeywords;
                 }
+            }
+
+            //Write packet metadata to file
+            if (curFileDescIter->second.metdata_file_enabled()) {
+                std::string packetmetadata = packet_to_XMLstring(write_bytes,packet->SRI,packet->T,packet->EOS,packet_pos-write_bytes,sizeof(packet->dataBuffer[0]));
+                filesystem.write(curFileDescIter->second.in_process_uri_metadata_filename, &packetmetadata, advanced_properties.force_flush);
             }
 
             // Close File
             if (eos || reached_max_size) {
-                LOG_DEBUG(FileWriter_i, " *** PROCESSING EOS FOR STREAM ID : " << stream_id);
                 if (eos) {
-
-					allKeywords.length(0);
-                }
-                if (eos && curFileDescIter->second.metdata_file_enabled()) {
-                    std::string metadata = eos_to_XMLstring(packet->SRI);
-                    filesystem.write(curFileDescIter->second.in_process_uri_metadata_filename, &metadata, advanced_properties.force_flush);
+                    LOG_DEBUG(FileWriter_i, " *** PROCESSING EOS FOR STREAM ID : " << stream_id);
+                    allKeywords.length(0);
                 }
                 close_file(destination_filename, packet->T, stream_id);
                 if (reached_max_size && advanced_properties.reset_on_max_file) {
@@ -645,6 +761,7 @@ template <class IN_PORT_TYPE> bool FileWriter_i::singleService(IN_PORT_TYPE * da
         }
         catch (const std::logic_error & error) {
             LOG_DEBUG(FileWriter_i, error.what());
+            break;
         }
         catch (...) {
             LOG_DEBUG(FileWriter_i, "Caught unknown exception in service function loop");
@@ -713,7 +830,8 @@ bool FileWriter_i::close_file(const std::string& filename, const BULKIO::Precisi
     return false;
 }
 
-std::string FileWriter_i::stream_to_basename(const std::string & stream_id, const BULKIO::StreamSRI& sri, const BULKIO::PrecisionUTCTime &_T, const std::string & extension, const std::string & dt) {
+template <class IN_PORT_TYPE>
+std::string FileWriter_i::stream_to_basename(const std::string & stream_id, const BULKIO::StreamSRI& sri, const BULKIO::PrecisionUTCTime &_T, const std::string & extension) {
 
     // Create Timestamp String
     BULKIO::PrecisionUTCTime tstamp = _T;
@@ -764,7 +882,7 @@ std::string FileWriter_i::stream_to_basename(const std::string & stream_id, cons
     bn = replace_string(bn, "%EXTENSION%", ext);
     bn = replace_string(bn, "%MODE%", mode);
     bn = replace_string(bn, "%SR%", std::string(sr));
-    bn = replace_string(bn, "%DT%", std::string(dt));
+    bn = replace_string(bn, "%DT%", data_format_string<IN_PORT_TYPE>());
 
     std::string cf_hz_str = "Hz";
     std::string colrf_hz_str = "";
@@ -819,34 +937,89 @@ std::string FileWriter_i::stream_to_basename(const std::string & stream_id, cons
     return bn;
 }
 
-std::string FileWriter_i::sri_to_XMLstring(const BULKIO::StreamSRI& sri) {
+std::string FileWriter_i::sri_to_XMLstring(const BULKIO::StreamSRI& sri,const bool newsri) {
     std::ostringstream sri_string;
-    sri_string << "<sri>";
+    if (newsri) {
+        sri_string << "<sri new=\"true\">";
+    } else {
+        sri_string << "<sri new=\"false\">";
+    }
     sri_string << "<streamID>" << sri.streamID << "</streamID>";
     sri_string << "<hversion>" << sri.hversion << "</hversion>";
-    sri_string << "<xstart>" << sri.xstart << "</xstart>";
-    sri_string << "<xdelta>" << sri.xdelta << "</xdelta>";
-    sri_string << "<xunits>" << sri.xunits << "</xunits>";
-    sri_string << "<subsize>" << sri.subsize << "</subsize>";
-    sri_string << "<ystart>" << sri.ystart << "</ystart>";
-    sri_string << "<ydelta>" << sri.ydelta << "</ydelta>";
-    sri_string << "<yunits>" << sri.yunits << "</yunits>";
-    sri_string << "<mode>" << sri.mode << "</mode>";
+    sri_string << "<xunits>"   << sri.xunits   << "</xunits>";
+    sri_string << "<subsize>"  << sri.subsize  << "</subsize>";
+    sri_string << "<yunits>"   << sri.yunits   << "</yunits>";
+    sri_string << "<mode>"     << sri.mode     << "</mode>";
+    sri_string << std::fixed << std::setprecision(15); // The rest of the numbers will be std::fixed to avoid std::scientific
+    // this is how it would be reset:  << std::resetiosflags(std::ios_base::floatfield) << std::setprecision(15)
+    sri_string << "<xstart>"   << sri.xstart   << "</xstart>";
+    sri_string << "<xdelta>"   << sri.xdelta   << "</xdelta>";
+    sri_string << "<ystart>"   << sri.ystart   << "</ystart>";
+    sri_string << "<ydelta>"   << sri.ydelta   << "</ydelta>";
     for (unsigned int i = 0; i < sri.keywords.length(); i++) {
-        sri_string << "<keyword><id>" << sri.keywords[i].id << "</id>";
-        sri_string << "<value>" << ossie::any_to_string(sri.keywords[i].value) << "</value></keyword>";
+        unsigned int typecode_name = sri.keywords[i].value.type()->kind();
+        sri_string << "<keyword id=\"" << sri.keywords[i].id << "\" type=\"" << typecode_name << "\">";
+
+        CORBA::Float tmpFloat;
+        CORBA::Double tmpDouble;
+        CORBA::LongDouble tmpLongDouble;
+        switch (typecode_name) {
+        case CORBA::tk_float:
+            sri.keywords[i].value >>= tmpFloat;
+            sri_string << std::setprecision(7) << tmpFloat << std::setprecision(15);
+            break;
+        case CORBA::tk_double:
+            sri.keywords[i].value >>= tmpDouble;
+            sri_string << tmpDouble;
+            break;
+        case CORBA::tk_longdouble:
+            sri.keywords[i].value >>= tmpLongDouble;
+            sri_string << tmpLongDouble;
+            break;
+        default:
+            sri_string << ossie::any_to_string(sri.keywords[i].value);
+        }
+        sri_string << "</keyword>";
     }
     sri_string << "</sri>";
 
     return std::string(sri_string.str());
 }
 
-std::string FileWriter_i::eos_to_XMLstring(const BULKIO::StreamSRI& sri) {
-    std::ostringstream eos_string;
-    eos_string << "<eos>";
-    eos_string << "<streamID>" << sri.streamID << "</streamID>";
-    eos_string << "</eos>";
-    return std::string(eos_string.str());
+std::string FileWriter_i::packet_to_XMLstring(const int packetSize, const BULKIO::StreamSRI& sri,const BULKIO::PrecisionUTCTime& timecode, const bool& eos,const size_t packetPosition,const size_t elementSize) {
+    std::ostringstream packet_string;
+    packet_string << "<packet>";
+    packet_string << "<streamID>"   << sri.streamID << "</streamID>";
+    packet_string << "<datalength>" << packetSize   << "</datalength>";
+    packet_string << "<EOS>"        << eos          << "</EOS>";
+    packet_string << "<timecode>";
+    packet_string << "<tcmode>"     << timecode.tcmode   << "</tcmode>";
+    packet_string << "<tcstatus>"   << timecode.tcstatus << "</tcstatus>";
+    packet_string << std::setprecision(15); // The rest of the numbers will have 15 digits of precision
+    if (packetPosition==0) {
+        packet_string << "<twsec>" << timecode.twsec << "</twsec>";
+        packet_string << std::fixed; // The rest of the numbers will be std::fixed to avoid std::scientific
+        // this is how it would be reset:  << std::resetiosflags(std::ios_base::floatfield) << std::setprecision(15)
+        packet_string << "<tfsec>" << timecode.tfsec << "</tfsec>";
+        packet_string << "<toff>"  << timecode.toff  << "</toff>";
+    } else {
+        // Create an adjusted timecode if this packet was split between two files
+        double timeoffset = sri.xdelta*packetPosition/elementSize;
+        double correctedtfsec  = timecode.tfsec +timeoffset;
+        double correctedtwsec = 0.0;
+        correctedtfsec = modf(correctedtfsec, &correctedtwsec);
+        correctedtwsec +=timecode.twsec;
+        packet_string << "<twsec>" << correctedtwsec << "</twsec>";
+        packet_string << std::fixed; // The rest of the numbers will be std::fixed to avoid std::scientific
+        // this is how it would be reset:  << std::resetiosflags(std::ios_base::floatfield) << std::setprecision(15)
+        packet_string << "<tfsec>" << correctedtfsec << "</tfsec>";
+        packet_string << "<toff>"  << timecode.toff  << "</toff>";
+    }
+
+    packet_string << "</timecode>";
+    packet_string << "</packet>";
+    return std::string(packet_string.str());
+
 }
 
 std::pair<blue::HeaderControlBlock, std::vector<char> > FileWriter_i::createBluefilesHeaders(const BULKIO::StreamSRI& sri, size_t datasize, std::string midasType, double start_ws, double start_fs) {
@@ -895,12 +1068,15 @@ std::pair<blue::HeaderControlBlock, std::vector<char> > FileWriter_i::createBlue
     }
 
     hcb.setDataSize(datasize - BLUEFILE_BLOCK_SIZE);
-    hcb.setHeaderRep(blue::IEEE); // Note: avoid EEEI headers (EEEI datasets are ok)
+    // Note: Write headers in native endiance; Ok to write data in either
+    hcb.setHeaderRep(blue::IEEE); // For blueFileLib, IEEE Represents local endiance as written
 
-    if (swap_bytes) {
-        hcb.setDataRep(blue::EEEI);
+    if((BULKIO_BYTE_ORDER==BYTE_ORDER) ^ PERFORM_BYTE_SWAP) {
+        LOG_DEBUG(FileWriter_i,"Setting BLUE file data_rep to native endiance.");
+        hcb.setDataRep(blue::IEEE); // For blueFileLib, IEEE Represents local endiance as written
     } else {
-        hcb.setDataRep(blue::IEEE);
+        LOG_DEBUG(FileWriter_i,"Setting BLUE file data_rep to opposite of native endiance.");
+        hcb.setDataRep(blue::EEEI); // For blueFileLib, EEEI Represents opposite of local endiance.
     }
 
     // Turn SRI keywords to Midas Keywords
@@ -1070,26 +1246,26 @@ size_t FileWriter_i::sizeString_to_longBytes(std::string size) {
 
 void FileWriter_i::mergeKeywords(BULKIO::StreamSRI::_keywords_seq newkeywords) {
 
-	for (unsigned int i = 0; i<newkeywords.length(); i++) {
-		bool found = false;
-		for (unsigned int j = 0; j<allKeywords.length(); j++) {
-			if (!strcmp(newkeywords[i].id,allKeywords[j].id)) {
-				//Keywords already in List, update value
-				LOG_DEBUG(FileWriter_i, "  mergeKeywords: Keywords already in List, update value " << newkeywords[i].id)
-				allKeywords[j].value = newkeywords[i].value;
-				found=true;
-				break;
-			}
-		}
-		if (!found) {
-			//Keyword not already in list of all keywords so add it
-			LOG_DEBUG(FileWriter_i, "  mergeKeywords: Adding Keyword " << newkeywords[i].id)
-			allKeywords.length(allKeywords.length()+1);
-			allKeywords[allKeywords.length()-1] = newkeywords[i];
+    for (unsigned int i = 0; i<newkeywords.length(); i++) {
+        bool found = false;
+        for (unsigned int j = 0; j<allKeywords.length(); j++) {
+            if (!strcmp(newkeywords[i].id,allKeywords[j].id)) {
+                //Keywords already in List, update value
+                LOG_DEBUG(FileWriter_i, "  mergeKeywords: Keywords already in List, update value " << newkeywords[i].id)
+                allKeywords[j].value = newkeywords[i].value;
+                found=true;
+                break;
+            }
+        }
+        if (!found) {
+            //Keyword not already in list of all keywords so add it
+            LOG_DEBUG(FileWriter_i, "  mergeKeywords: Adding Keyword " << newkeywords[i].id)
+            allKeywords.length(allKeywords.length()+1);
+            allKeywords[allKeywords.length()-1] = newkeywords[i];
 
-		}
+        }
 
-	}
+    }
 
 };
 

@@ -155,6 +155,23 @@ void FileWriter_base::loadProperties()
                 "external",
                 "property");
 
+    addProperty(input_bulkio_byte_order,
+                "host_order",
+                "input_bulkio_byte_order",
+                "input_bulkio_byte_order",
+                "readwrite",
+                "",
+                "external",
+                "property");
+
+    addProperty(host_byte_order,
+                "host_byte_order",
+                "host_byte_order",
+                "readonly",
+                "",
+                "external",
+                "property");
+
     addProperty(advanced_properties,
                 advanced_properties_struct(),
                 "advanced_properties",
